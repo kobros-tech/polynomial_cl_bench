@@ -1,0 +1,25 @@
+{
+  "algorithm": "polynomial_cl",
+  "role": "experimental",
+  "condition": "expanding",
+  "strategy": "ordinary",
+  "learning_rate": [0.75, 1.5, 1.5, 6.0],
+  "feature_power": 0.0,
+  "hyperparameter_provenance": {
+    "selection": "validation_selected_by_core_per_degree_study",
+    "optimality_claim": "none",
+    "source": "polynomial_cl results/per_degree/cell_ordinary_class_balanced.json (core commit 9e15732), candidate 'combined'",
+    "selection_protocol_in_core": {
+      "validation_fraction": 0.1,
+      "selection_seeds": [0, 1, 2],
+      "test_seeds_in_core": [3, 4, 5, 6, 7, 8, 9],
+      "strategy": "ordinary",
+      "sampling": "class_balanced",
+      "epochs": 3,
+      "batch_size": 128,
+      "memory_per_class": 200,
+      "selection_rule": "pareto(accuracy, forgetting), max accuracy - forgetting"
+    },
+    "note": "One entry per degree group (degrees 0-3). Chosen by the core's own limited candidate search (a shared-rate grid, one-group-at-a-time factors, one combined vector), not by a systematic tuning procedure, and not re-run by this benchmark. Kept separate from the reference configuration; neither is claimed optimal."
+  }
+}

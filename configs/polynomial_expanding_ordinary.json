@@ -1,0 +1,13 @@
+{
+  "algorithm": "polynomial_cl",
+  "role": "primary_reference",
+  "condition": "expanding",
+  "strategy": "ordinary",
+  "learning_rate": 0.1,
+  "feature_power": 0.0,
+  "hyperparameter_provenance": {
+    "selection": "core_default_not_validation_selected",
+    "optimality_claim": "none",
+    "note": "0.1 is polynomial_cl.class_incremental.experiment.LEARNING_RATE, a fixed shared default. It is the reference configuration because it reproduces the core's committed seed-0 result exactly (integration check), not because it is tuned. No systematic validation-based tuning has been performed."
+  }
+}

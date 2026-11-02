@@ -1,0 +1,42 @@
+{
+  "name": "split_mnist_cil",
+  "version": "1.0",
+  "dataset": {
+    "name": "split_mnist",
+    "source": "MNIST IDX archives (as downloaded by polynomial_cl.class_incremental.mnist from storage.googleapis.com/cvdf-datasets/mnist/)",
+    "files": {
+      "train-images-idx3-ubyte.gz": "440fcabf73cc546fa21475e81ea370265605f56be210a4024d2ca8f203523609",
+      "train-labels-idx1-ubyte.gz": "3552534a0a558bbed6aed32b30c495cca23d567ec52cac8be1a0730e8010255c",
+      "t10k-images-idx3-ubyte.gz": "8d422c7b0a1c1c79245a5bcf07fe86e33eeafee792b84584aec276f5a2dbc4e6",
+      "t10k-labels-idx1-ubyte.gz": "f7ae60f92e00ec6debd23a6088c31dbd2371eca3ffa0defaefb259924204aec6"
+    },
+    "train_split": "MNIST train (60000 examples)",
+    "test_split": "MNIST t10k (10000 examples); never used for model selection"
+  },
+  "projection": {
+    "seed": 0,
+    "n_components": 16,
+    "description": "(x - 0.1307) / 0.3081, then the core's fixed orthonormal random projection (QR of a seeded Gaussian); not fitted to data. Fixed across all runs and algorithms."
+  },
+  "task_order": [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]],
+  "seeds": [0, 1, 2, 3, 4],
+  "training": {
+    "epochs": 3,
+    "batch_size": 128,
+    "sampling": "class_balanced"
+  },
+  "memory": {
+    "policy": "fixed_per_class_random_subset",
+    "examples_per_class": 200
+  },
+  "evaluation": {
+    "schedule": "after_each_experience",
+    "population": "test examples of experience j, scored after experience i >= j",
+    "prediction_rule": "argmax over classes introduced through experience i only (future classes never compete)"
+  },
+  "validation": {
+    "purpose": "hyperparameter selection only",
+    "holdout_fraction": 0.1,
+    "holdout_seed": 123
+  }
+}
