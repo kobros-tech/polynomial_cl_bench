@@ -21,6 +21,7 @@ from helpers import (
     small_protocol,
     synthetic_dataset,
 )
+from polynomial_cl_bench import provenance as prov
 from polynomial_cl_bench.algorithms import polynomial as module
 from polynomial_cl_bench.algorithms.polynomial import AdapterError, PolynomialAdapter
 
@@ -141,7 +142,7 @@ class RunRecord(unittest.TestCase):
         self.assertEqual(c["protocol"]["fingerprint"], self.protocol.fingerprint())
         self.assertEqual(c["role"], "primary_reference")
         self.assertEqual(result.replay_examples_used_by_task, [0, 14, 28, 42, 56])
-        self.assertEqual(result.algorithm["core"]["commit"], module.core_provenance()["commit"])
+        self.assertEqual(result.algorithm["core"]["commit"], prov.core_provenance()["commit"])
         json.dumps(c)  # serialisable as is
 
     def test_changing_a_protocol_value_changes_the_recorded_fingerprint(self):
@@ -225,16 +226,16 @@ class FakeDistribution:
 
 class Provenance(unittest.TestCase):
     def provenance_for(self, direct_url):
-        real = module.metadata.distribution
+        real = prov.metadata.distribution
 
         def distribution(name):
             return FakeDistribution(direct_url) if name == "polynomial-cl" else real(name)
 
-        with mock.patch.object(module.metadata, "distribution", distribution):
-            return module.core_provenance()
+        with mock.patch.object(prov.metadata, "distribution", distribution):
+            return prov.core_provenance()
 
     def test_pip_vcs_install_counts_as_remote_fetched_and_checks_the_pin(self):
-        pin = module.pinned_core_commit()
+        pin = prov.pinned_core_commit()
         self.assertRegex(pin, r"^[0-9a-f]{40}$")
         url = "https://github.com/kobros-tech/polynomial_cl_demo.git"
         ok = self.provenance_for({"url": url, "vcs_info": {"vcs": "git", "commit_id": pin}})

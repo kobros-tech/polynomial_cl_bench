@@ -86,6 +86,18 @@ Also inspected: `experiments/rate_selection.py` validates feature power x learni
   `remote_verified: false`) or `unknown`. `matches_pin` compares against the pin in this package's
   metadata. A local commit never counts as remote-verified.
 
+## Run modes and the pinned core
+
+- `development` (default): any installed core is accepted. The result records `run_mode`, the core
+  commit/source and `official_problems` (every reason the installation would not qualify).
+- `official`: refused with `ProvenanceError`, before any training, unless the core commit equals the
+  pin in this package's metadata and the checkout has no uncommitted tracked changes (an unknown or
+  mismatched commit is also refused). `PolynomialAdapter(..., mode="official")`.
+- **Remote verification is separate and currently `unverified`** (`provenance.PIN_REMOTE_STATUS`).
+  Until someone confirms the pinned commit on the GitHub remote and changes that constant, every
+  official run emits `RemoteUnverifiedWarning` and every record carries `pin_remote_status` and
+  `remote_verified` (false for a local checkout, true only for a pip VCS install).
+
 ## Reference checks (full Split MNIST, real data)
 
 | Config | Seed | Core record | Benchmark result |
@@ -107,5 +119,5 @@ Place the four MNIST `.gz` archives in `data/mnist/` (git-ignored). The benchmar
   Run `git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git` and confirm the commit is
   reachable from a pushed branch before releasing. If the repo is private, installs need credentials.
 - Test runs so far used a local editable core (`local_git`, `matches_pin: true`), not a pip VCS install.
-- The adapter records but does not enforce `matches_pin`.
+- Official runs accept a clean local checkout at the pin (`remote_verified: false`); requiring a pip VCS install is an open choice.
 - Test data and replay indices are handled inside the core; the adapter can only observe them.

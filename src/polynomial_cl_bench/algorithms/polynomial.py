@@ -12,10 +12,7 @@ inference time and peak memory are not available and are reported as None.
 from __future__ import annotations
 
 import json
-import re
-import subprocess
 import time
-from importlib import metadata
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +28,7 @@ from polynomial_cl.class_incremental.training import SAMPLING_POLICIES
 
 from ..datasets import SplitMNIST
 from ..protocol import Protocol
+from ..provenance import RUN_MODES, core_provenance, enforce_run_mode
 from .base import SequenceResult
 
 N_OUTPUTS = 10  # the core's single softmax head
@@ -41,73 +39,6 @@ class AdapterError(RuntimeError):
 
 
 ROLES = ("primary_reference", "experimental")
-
-
-def commit_from_direct_url(direct_url: dict | None) -> str | None:
-    """Commit recorded by pip for a VCS install (PEP 610), else None."""
-    if not direct_url:
-        return None
-    return (direct_url.get("vcs_info") or {}).get("commit_id")
-
-
-def pinned_core_commit() -> str | None:
-    """The commit this benchmark's own metadata pins the core to, if parseable."""
-    for requirement in metadata.requires("polynomial-cl-bench") or []:
-        match = re.match(r"polynomial-cl\s*@\s*git\+\S+@([0-9a-f]{40})\b", requirement)
-        if match:
-            return match.group(1)
-    return None
-
-
-def core_provenance() -> dict:
-    """Which core was imported, and how much of that claim is verified.
-
-    ``commit_source`` says where the commit came from:
-
-    * ``pip_vcs_install``: pip installed it from ``remote_url`` and recorded the resolved commit
-      (PEP 610). ``remote_verified`` is True: the commit was fetched from that remote.
-    * ``local_git`` / ``local_git_dirty``: read with ``git rev-parse`` from a local checkout
-      (editable or path install). The commit exists locally; **nothing here shows it exists on
-      any remote**, so ``remote_verified`` is False. ``_dirty`` means tracked files are modified.
-    * ``unknown``: no commit could be determined.
-
-    ``matches_pin`` compares the commit with the pin in this package's metadata (None if either
-    side is unknown); a mismatch means the run does not use the pinned core.
-    """
-    dist = metadata.distribution("polynomial-cl")
-    text = dist.read_text("direct_url.json")
-    direct_url = json.loads(text) if text else None
-    commit = commit_from_direct_url(direct_url)
-    source, remote_url = "unknown", None
-    if commit is not None:
-        source, remote_url = "pip_vcs_install", (direct_url or {}).get("url")
-    else:
-        url = (direct_url or {}).get("url", "")
-        if url.startswith("file://"):
-            directory = Path(url[len("file://"):])
-            try:
-                commit = subprocess.run(
-                    ["git", "-C", str(directory), "rev-parse", "HEAD"],
-                    capture_output=True, text=True, check=True, timeout=30,
-                ).stdout.strip()
-                dirty = subprocess.run(
-                    ["git", "-C", str(directory), "status", "--porcelain",
-                     "--untracked-files=no"],
-                    capture_output=True, text=True, check=True, timeout=30,
-                ).stdout.strip()
-                source = "local_git_dirty" if dirty else "local_git"
-            except (OSError, subprocess.SubprocessError):
-                commit = None
-    pinned = pinned_core_commit()
-    return {
-        "version": dist.version,
-        "commit": commit,
-        "commit_source": source,
-        "remote_url": remote_url,
-        "remote_verified": source == "pip_vcs_install",
-        "pinned_commit": pinned,
-        "matches_pin": None if commit is None or pinned is None else commit == pinned,
-    }
 
 
 class PolynomialAdapter:
@@ -121,11 +52,14 @@ class PolynomialAdapter:
         feature_power: float = 0.0,
         hyperparameter_provenance: dict | None = None,
         role: str = "experimental",
+        mode: str = "development",
     ):
         if condition not in CONDITIONS:
             raise AdapterError(f"unknown condition {condition!r}; core supports {CONDITIONS}")
         if strategy not in STRATEGIES:
             raise AdapterError(f"unknown strategy {strategy!r}; core supports {STRATEGIES}")
+        if mode not in RUN_MODES:
+            raise AdapterError(f"mode must be one of {RUN_MODES}")
         if role not in ROLES:
             raise AdapterError(f"role must be one of {ROLES}")
         self.condition = condition
@@ -134,10 +68,11 @@ class PolynomialAdapter:
         self.feature_power = feature_power
         self.hyperparameter_provenance = hyperparameter_provenance or {}
         self.role = role
+        self.mode = mode
         self._features = None  # (dataset fingerprint, FeatureData); read-only, shared by runs
 
     @classmethod
-    def from_file(cls, path) -> "PolynomialAdapter":
+    def from_file(cls, path, mode: str = "development") -> "PolynomialAdapter":
         raw = json.loads(Path(path).read_text())
         if raw.get("algorithm") != "polynomial_cl":
             raise AdapterError("not a polynomial_cl algorithm configuration")
@@ -148,6 +83,7 @@ class PolynomialAdapter:
             feature_power=raw.get("feature_power", 0.0),
             hyperparameter_provenance=raw.get("hyperparameter_provenance"),
             role=raw.get("role", "experimental"),
+            mode=mode,
         )
 
     def describe(self) -> dict:
@@ -159,6 +95,7 @@ class PolynomialAdapter:
         return {
             "name": self.name,
             "role": self.role,
+            "run_mode": self.mode,
             "condition": self.condition,
             "strategy": self.strategy,
             "configuration": {
@@ -181,6 +118,7 @@ class PolynomialAdapter:
         return self._features[1]
 
     def run_sequence(self, dataset: SplitMNIST, protocol: Protocol, seed: int) -> SequenceResult:
+        enforce_run_mode(self.mode, core_provenance())  # raises in official mode if not pinned
         if tuple(tuple(t) for t in protocol.task_order) != tuple(TASK_ORDER):
             raise AdapterError(
                 "the core's task order is fixed to "
@@ -272,6 +210,7 @@ class PolynomialAdapter:
                 "sampling": record["sampling"],
                 "memory_per_class": protocol.memory_per_class,
                 "role": self.role,
+                "run_mode": self.mode,
             },
             replay_examples_used_by_task=replay_used,
             extras={

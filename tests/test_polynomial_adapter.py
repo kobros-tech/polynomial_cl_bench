@@ -9,11 +9,8 @@ from polynomial_cl import metrics as core_metrics
 from polynomial_cl.class_incremental import TASK_ORDER
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms import polynomial as module
-from polynomial_cl_bench.algorithms.polynomial import (
-    AdapterError,
-    PolynomialAdapter,
-    commit_from_direct_url,
-)
+from polynomial_cl_bench.algorithms.polynomial import AdapterError, PolynomialAdapter
+from polynomial_cl_bench.provenance import commit_from_direct_url, core_provenance
 from polynomial_cl_bench.datasets import array_fingerprint
 
 
@@ -191,7 +188,7 @@ class PolynomialAdapterTests(unittest.TestCase):
         self.assertIsNone(commit_from_direct_url(None))
 
     def test_core_provenance_reports_a_commit_in_this_environment(self):
-        info = module.core_provenance()
+        info = core_provenance()
         self.assertEqual(info["version"], "0.1.0")
         self.assertRegex(info["commit"], r"^[0-9a-f]{40}$")
 
