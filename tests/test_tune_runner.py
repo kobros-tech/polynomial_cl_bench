@@ -95,7 +95,7 @@ class ApprovedER_MLPGrid(unittest.TestCase):
                         tune.load_grid(path)
 
 
-class ProposedPolynomialGrid(unittest.TestCase):
+class ApprovedPolynomialGrid(unittest.TestCase):
     def test_grid_is_five_rates_by_three_feature_powers_with_the_same_budget(self):
         spec = tune.load_grid(POLY_GRID)
         self.assertEqual(spec.algorithm, "polynomial_cl")
@@ -122,15 +122,19 @@ class ProposedPolynomialGrid(unittest.TestCase):
             spec.entries,
         )
 
-    def test_it_is_not_approved_and_the_runner_refuses_it(self):
-        spec = tune.load_grid(POLY_GRID)
+    def test_grid_is_marked_approved(self):
+        self.assertEqual(tune.load_grid(POLY_GRID).approval_status, "approved")
+
+    def test_a_proposed_grid_is_refused_by_the_runner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = tune.load_grid(approved_copy(tmp, POLY_GRID, status="proposed"))
         self.assertEqual(spec.approval_status, "proposed")
         with self.assertRaisesRegex(tune.GridError, "only an approved grid"):
             tune.run_tuning(
                 spec, small_protocol(memory_per_class=200), synthetic_dataset()
             )
 
-    def test_command_line_refuses_before_loading_any_data(self):
+    def test_command_line_refuses_a_proposed_grid_before_loading_any_data(self):
         with (
             tempfile.TemporaryDirectory() as tmp,
             mock.patch.object(
@@ -139,11 +143,10 @@ class ProposedPolynomialGrid(unittest.TestCase):
                 side_effect=AssertionError("data must not be loaded"),
             ),
         ):
-            code = tune.main(
-                ["--grid", str(POLY_GRID), "--out", str(Path(tmp) / "r.json")]
-            )
-            self.assertEqual(code, 2)
-            self.assertEqual(list(Path(tmp).iterdir()), [])
+            grid = approved_copy(tmp, POLY_GRID, status="proposed")
+            out = Path(tmp) / "r.json"
+            self.assertEqual(tune.main(["--grid", str(grid), "--out", str(out)]), 2)
+            self.assertFalse(out.exists())
 
 
 class RunnerOnSyntheticData(unittest.TestCase):

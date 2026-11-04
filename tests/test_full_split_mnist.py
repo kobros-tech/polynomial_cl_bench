@@ -63,6 +63,9 @@ class FullSplitMNIST(unittest.TestCase):
             (info["condition"], info["strategy"]), ("expanding", "ordinary")
         )
         self.assertEqual(info["configuration"]["learning_rate"], 0.1)
+        self.assertEqual(
+            info["configuration"]["feature_power"], 0.0
+        )  # was never asserted before
         self.assertEqual(self.protocol.sampling, "class_balanced")
         self.assertEqual(self.protocol.projection_seed, 0)
 
@@ -73,8 +76,14 @@ class FullSplitMNIST(unittest.TestCase):
 
         c = first.run_config
         self.assertEqual(
-            (c["condition"], c["strategy"], c["sampling"], c["learning_rate"]),
-            ("expanding", "ordinary", "class_balanced", 0.1),
+            (
+                c["condition"],
+                c["strategy"],
+                c["sampling"],
+                c["learning_rate"],
+                c["feature_power"],
+            ),
+            ("expanding", "ordinary", "class_balanced", 0.1, 0.0),
         )
         self.assertEqual(
             (c["epochs"], c["batch_size"], c["memory_per_class"]), (3, 128, 200)

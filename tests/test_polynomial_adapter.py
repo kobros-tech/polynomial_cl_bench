@@ -58,6 +58,22 @@ class PolynomialAdapterTests(unittest.TestCase):
         self.assertEqual(kwargs["learning_rate"], 0.1)
         self.assertEqual(result.sampling, "class_balanced")
 
+    def test_shipped_reference_config_really_uses_lr_0_1_and_feature_power_0(self):
+        """Verified through the actual call into the core, not read off the JSON file."""
+        from helpers import POLYNOMIAL_CONFIG_PATH
+
+        spy = SpyRunCondition()
+        adapter = PolynomialAdapter.from_file(POLYNOMIAL_CONFIG_PATH)
+        with mock.patch.object(module, "run_condition", spy):
+            result = adapter.run_sequence(self.dataset, self.protocol, 0)
+        ((_, _, _, _, kwargs),) = spy.calls
+        self.assertEqual((kwargs["learning_rate"], kwargs["feature_power"]), (0.1, 0.0))
+        self.assertEqual(
+            (result.run_config["learning_rate"], result.run_config["feature_power"]),
+            (0.1, 0.0),
+        )
+        self.assertEqual(adapter.describe()["role"], "primary_reference")
+
     def test_shuffled_ablation_is_passed_through_and_recorded(self):
         spy = SpyRunCondition()
         with mock.patch.object(module, "run_condition", spy):

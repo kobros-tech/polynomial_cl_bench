@@ -7,9 +7,10 @@ confirm the relevant tests fail.
     python3 tools/mutation_check.py
 
 Every source file is restored afterwards (and verified by hash). A mutation is **caught** if
-the named test modules fail. A mutation marked ``equivalent`` must be shown to leave the
-behaviour unchanged (the output of the original and mutated code is compared on many inputs);
-it is reported separately and is not counted as caught or missed.
+the named test modules fail. A mutation marked ``equivalent`` is reported separately and is not
+counted as caught or missed. Its equivalence is only **empirical**: the output of the original and
+mutated code is compared on a finite set of inputs (6 label/batch configurations x 5 seeds = 30
+cases). That is evidence, not a proof.
 """
 
 from __future__ import annotations
@@ -302,12 +303,13 @@ def run_tests(modules):
 
 def _load(source: str) -> types.ModuleType:
     module = types.ModuleType("sampling_variant")
+    # Intentional: the mutation checker must execute mutated variants of the sampling source.
     exec(compile(source, "sampling_variant", "exec"), module.__dict__)  # noqa: S102
     return module
 
 
-def prove_equivalent(original: str, mutated: str) -> bool:
-    """Original and mutated sampler give identical batches and generator state on many inputs."""
+def empirically_equivalent(original: str, mutated: str) -> bool:
+    """True if original and mutated give identical batches and generator state on the tested cases."""
     a, b = _load(original), _load(mutated)
     cases = [
         ([20] * 8 + [300, 310], 128, 25),
@@ -335,7 +337,7 @@ def prove_equivalent(original: str, mutated: str) -> bool:
 def main() -> int:
     caught = missed = equivalent = 0
     originals = {f: _digest(SRC / f) for f in {m[2] for m in M}}
-    print(f"{'id':4s} {'verdict':22s} description")
+    print(f"{'id':4s} {'verdict':24s} description")
     try:
         for mid, text, file, old, new, modules, kind in M:
             path = SRC / file
@@ -344,8 +346,10 @@ def main() -> int:
                 raise SystemExit(f"{mid}: mutation target not found in {file}")
             mutated = source.replace(old, new, 1)
             if kind == "equivalent":
-                ok = prove_equivalent(source, mutated)
-                verdict = "EQUIVALENT (proved)" if ok else "NOT EQUIVALENT: reclassify"
+                ok = empirically_equivalent(source, mutated)
+                verdict = (
+                    "EMPIRICALLY EQUIVALENT" if ok else "NOT EQUIVALENT: reclassify"
+                )
                 equivalent += ok
                 missed += not ok
             else:
@@ -357,12 +361,13 @@ def main() -> int:
                 verdict = "MISSED" if passed else "caught"
                 caught += not passed
                 missed += passed
-            print(f"{mid:4s} {verdict:22s} {text}")
+            print(f"{mid:4s} {verdict:24s} {text}")
     finally:
         for f, digest in originals.items():
             assert _digest(SRC / f) == digest, f"{f} was not restored"
     print(
-        f"\n{len(M)} mutations: {caught} caught, {equivalent} proved equivalent, {missed} missed"
+        f"\n{len(M)} mutations: {caught} caught, {equivalent} empirically equivalent over the "
+        f"tested cases (not proved), {missed} missed"
     )
     return 0 if missed == 0 else 1
 

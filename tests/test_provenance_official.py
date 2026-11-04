@@ -241,7 +241,7 @@ class CoreLocalCheckout(unittest.TestCase):
         self.assertTrue(info["official_problems"])
 
     def test_missing_pin_is_rejected(self):
-        a, _ = patched(core_direct_url=pip_url())
+        a, _b = patched(core_direct_url=pip_url())
         with a, mock.patch.object(prov, "pinned_core_requirement", lambda: None):
             info = prov.core_provenance()
         self.assertTrue(

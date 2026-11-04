@@ -1,2 +1,9 @@
 config:
   MD013: false
+  # Prettier owns table formatting (it pads columns); MD060 "compact" style
+  # would fight it, so the two hooks would undo each other.
+  MD060: false
+
+# Generated tuning tables (written by tune.py); not hand-authored documents.
+ignores:
+  - "results/**"

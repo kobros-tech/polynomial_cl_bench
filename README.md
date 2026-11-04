@@ -164,14 +164,15 @@ Validation tuning (`python3 -m polynomial_cl_bench.tune --grid <grid> --out resu
   hidden layer, plain SGD (no momentum, no weight decay), class-balanced sampling, 200 replay exemplars per
   class, selection seeds 100/101, 30 runs. Selection: candidates within 0.005 of the maximum mean final
   accuracy; among them the lowest mean forgetting (exact ties: higher accuracy, then grid order).
-- `configs/polynomial_grid.json` (**proposed, not approved**): lr in {0.01, 0.03, 0.1, 0.3, 1.0} x
+- `configs/polynomial_grid.json` (approved, unchanged): lr in {0.01, 0.03, 0.1, 0.3, 1.0} x
   feature_power in {0, 0.5, 1}, expanding/ordinary, same split, seeds, budget and rule. The runner refuses
-  any grid whose `approval_status` is not `approved`.
+  any grid whose `approval_status` is not `approved`. The Gaussian-input step-multiplier computation behind the
+  choice of powers was preliminary and is not evidence about MNIST.
 - The runner writes every run (failed and divergent ones included) to JSON, the complete validation table to
   Markdown beside it, and never overwrites an existing result. `--mode official` applies the unchanged
   provenance rules; a development-mode result records its provenance and `official_eligible`.
 
 `python3 tools/mutation_check.py` breaks the source in 27 ways and checks that the tests notice
-(26 caught, 1 proved behaviourally equivalent, 0 missed).
+(26 caught, 1 empirically equivalent over the tested cases (not proved), 0 missed).
 
 Not run: tuning on real MNIST (the archives were not available), so no hyperparameter has been selected.

@@ -1,7 +1,7 @@
 {
   "algorithm": "polynomial_cl",
-  "approval_status": "proposed",
-  "approval_note": "PROPOSED, not yet approved. The tuning CLI refuses to run this file until approval_status is changed to 'approved' by the maintainer's decision.",
+  "approval_status": "approved",
+  "approval_note": "Approved by the maintainer unchanged: lr in {0.01, 0.03, 0.1, 0.3, 1.0} x feature_power in {0, 0.5, 1}, seeds 100/101, 30 runs. The Gaussian-input step-multiplier computation that motivated the choice of powers was preliminary evidence only and says nothing proven about MNIST; the grid is changed only after a separately approved investigation of real MNIST validation results.",
   "fixed": {
     "condition": "expanding",
     "strategy": "ordinary"

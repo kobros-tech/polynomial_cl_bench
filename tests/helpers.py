@@ -25,12 +25,7 @@ def shipped_protocol() -> Protocol:
 
 def small_protocol(**changes) -> Protocol:
     """The shipped protocol with a tiny budget, for fast tests."""
-    base = {
-        "epochs": 1,
-        "batch_size": 32,
-        "memory_per_class": 10,
-        "seeds": (0, 1),
-    }
+    base = {"epochs": 1, "batch_size": 32, "memory_per_class": 10, "seeds": (0, 1)}
     base.update(changes)
     return replace(shipped_protocol(), **base)
 
