@@ -67,6 +67,14 @@ class PolynomialAdapter:
             raise AdapterError(f"mode must be one of {RUN_MODES}")
         if role not in ROLES:
             raise AdapterError(f"role must be one of {ROLES}")
+        # The core's class-incremental run_condition does not validate feature_power (a negative
+        # value would silently invert the per-feature step sizes), so the adapter does.
+        if (
+            np.ndim(feature_power)
+            or not np.isfinite(feature_power)
+            or feature_power < 0
+        ):
+            raise AdapterError("feature_power must be a finite, non-negative scalar")
         self.condition = condition
         self.strategy = strategy
         self.learning_rate = learning_rate

@@ -232,11 +232,64 @@ class Tuning(unittest.TestCase):
             result.ranking, [2, 3, 1, 0]
         )  # 2 before 3: equal everything, grid order
         self.assertEqual((result.selected_index, result.selected_config), (2, {"i": 2}))
-        self.assertEqual([c["rank"] for c in result.configs], [4, 3, 1, 2])
+        self.assertEqual([c["accuracy_rank"] for c in result.configs], [4, 3, 1, 2])
 
-    def test_higher_accuracy_beats_lower_forgetting(self):
-        result = self.select([FakeAdapter(0.60, 0.0), FakeAdapter(0.61, 0.3)])
+    def test_accuracy_gap_beyond_the_margin_beats_lower_forgetting(self):
+        result = self.select(
+            [FakeAdapter(0.60, 0.0), FakeAdapter(0.61, 0.3)]
+        )  # gap 0.01 > 0.005
         self.assertEqual(result.selected_index, 1)
+        self.assertEqual(result.candidates_within_margin, [1])
+
+    def test_within_the_margin_lower_forgetting_wins_even_at_lower_accuracy(self):
+        result = self.select(
+            [FakeAdapter(0.800, 0.2), FakeAdapter(0.796, 0.0)]
+        )  # gap 0.004
+        self.assertEqual(result.candidates_within_margin, [0, 1])
+        self.assertEqual(result.selected_index, 1)
+        self.assertAlmostEqual(result.max_mean_final_accuracy, 0.800)
+        self.assertEqual(
+            [c["within_margin_of_max"] for c in result.configs], [True, True]
+        )
+        self.assertEqual([c["selected"] for c in result.configs], [False, True])
+
+    def test_margin_boundary_is_inclusive_and_just_outside_is_excluded(self):
+        inside = self.select(
+            [FakeAdapter(0.800, 0.2), FakeAdapter(0.795, 0.0)]
+        )  # gap exactly 0.005
+        self.assertEqual(inside.selected_index, 1)
+        outside = self.select([FakeAdapter(0.800, 0.2), FakeAdapter(0.7949, 0.0)])
+        self.assertEqual(outside.selected_index, 0)
+
+    def test_margin_is_anchored_to_the_maximum_not_chained(self):
+        # B is within 0.005 of A, C is within 0.005 of B but 0.008 from A: C is not a candidate
+        result = self.select(
+            [FakeAdapter(0.800, 0.2), FakeAdapter(0.796, 0.1), FakeAdapter(0.792, 0.0)]
+        )
+        self.assertEqual(result.candidates_within_margin, [0, 1])
+        self.assertEqual(result.selected_index, 1)
+
+    def test_an_ineligible_configuration_never_sets_the_maximum(self):
+        result = self.select(
+            [
+                FakeAdapter(0.99, error=RuntimeError("x")),
+                FakeAdapter(0.50, 0.3),
+                FakeAdapter(0.498, 0.0),
+            ]
+        )
+        self.assertAlmostEqual(result.max_mean_final_accuracy, 0.50)
+        self.assertEqual(result.selected_index, 2)
+
+    def test_context_is_recorded_verbatim(self):
+        r = tuning.tune(
+            "fake",
+            lambda c: FakeAdapter(0.5),
+            [{"x": 1}],
+            self.dataset,
+            self.protocol,
+            context={"run_mode": "development"},
+        )
+        self.assertEqual(r.to_dict()["context"], {"run_mode": "development"})
 
     def test_failed_and_divergent_runs_are_preserved_and_ineligible(self):
         from polynomial_cl_bench.algorithms.er_mlp import TrainingDiverged

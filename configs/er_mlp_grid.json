@@ -1,0 +1,118 @@
+{
+  "algorithm": "er_mlp",
+  "approval_status": "approved",
+  "approval_note": "ER-MLP design approved in the Phase 2 design discussion and restated by the maintainer.",
+  "architecture": "16 -> H -> 10, one ReLU hidden layer",
+  "fixed": {
+    "replay": true,
+    "optimizer": "sgd",
+    "momentum": 0,
+    "weight_decay": 0
+  },
+  "protocol_requirements": {
+    "memory_per_class": 200,
+    "sampling": "class_balanced"
+  },
+  "selection": {
+    "seeds": [
+      100,
+      101
+    ],
+    "expected_runs": 30,
+    "margin": 0.005,
+    "rule": "candidates within 0.005 of the maximum mean final accuracy; among them the lowest mean forgetting; exact ties: higher accuracy, then grid order",
+    "split": "protocol.validation (holdout_fraction 0.1, holdout_seed 123 of the training data)"
+  },
+  "grid": [
+    {
+      "hidden": [
+        64
+      ],
+      "learning_rate": 0.01
+    },
+    {
+      "hidden": [
+        64
+      ],
+      "learning_rate": 0.03
+    },
+    {
+      "hidden": [
+        64
+      ],
+      "learning_rate": 0.1
+    },
+    {
+      "hidden": [
+        64
+      ],
+      "learning_rate": 0.3
+    },
+    {
+      "hidden": [
+        64
+      ],
+      "learning_rate": 1.0
+    },
+    {
+      "hidden": [
+        128
+      ],
+      "learning_rate": 0.01
+    },
+    {
+      "hidden": [
+        128
+      ],
+      "learning_rate": 0.03
+    },
+    {
+      "hidden": [
+        128
+      ],
+      "learning_rate": 0.1
+    },
+    {
+      "hidden": [
+        128
+      ],
+      "learning_rate": 0.3
+    },
+    {
+      "hidden": [
+        128
+      ],
+      "learning_rate": 1.0
+    },
+    {
+      "hidden": [
+        256
+      ],
+      "learning_rate": 0.01
+    },
+    {
+      "hidden": [
+        256
+      ],
+      "learning_rate": 0.03
+    },
+    {
+      "hidden": [
+        256
+      ],
+      "learning_rate": 0.1
+    },
+    {
+      "hidden": [
+        256
+      ],
+      "learning_rate": 0.3
+    },
+    {
+      "hidden": [
+        256
+      ],
+      "learning_rate": 1.0
+    }
+  ]
+}

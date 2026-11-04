@@ -9,9 +9,12 @@
   seeds. One shared ``ExperiencePlan`` per seed is reused by every configuration.
 * Budget: ``len(grid) * len(selection_seeds)`` runs, optionally asserted via ``expected_runs``
   so ER-MLP and the polynomial reference are tuned under the same budget.
-* Criterion (accuracy first): highest mean final mean accuracy over the selection seeds; ties
-  are broken by lower mean forgetting, then by earlier position in the grid. A configuration is
-  eligible only if **every** selection-seed run completed.
+* Criterion (accuracy first, approved): let ``best`` be the highest mean final mean accuracy
+  over the selection seeds among eligible configurations. Every configuration with mean accuracy
+  within ``SELECTION_MARGIN`` (0.005) of ``best`` is a candidate; the candidate with the lowest
+  mean forgetting is selected. Exact ties on forgetting go to the higher accuracy, then to the
+  earlier position in the grid. A configuration is eligible only if **every** selection-seed run
+  completed.
 * Nothing is dropped: failed and divergent runs stay in the result with their error.
 
 ``ProvenanceError`` is never caught: an official-mode refusal aborts the whole tuning.
@@ -32,7 +35,11 @@ from .protocol import Protocol
 from .provenance import ProvenanceError
 
 DEFAULT_SELECTION_SEEDS = (100, 101)
-CRITERION = "max_mean_final_accuracy__ties_min_mean_forgetting__ties_grid_order"
+SELECTION_MARGIN = 0.005
+CRITERION = (
+    "candidates_within_0.005_of_max_mean_final_accuracy"
+    "__select_min_mean_forgetting__then_higher_accuracy__then_grid_order"
+)
 
 
 class TuningError(ValueError):
@@ -52,7 +59,15 @@ class TuningResult:
     configs: list  # per configuration aggregate + eligibility
     selected_index: int | None
     selected_config: dict | None
-    ranking: list = field(default_factory=list)  # eligible config indices, best first
+    ranking: list = field(
+        default_factory=list
+    )  # eligible config indices by accuracy (descriptive)
+    selection_margin: float = SELECTION_MARGIN
+    max_mean_final_accuracy: float | None = None
+    candidates_within_margin: list = field(default_factory=list)
+    context: dict = field(
+        default_factory=dict
+    )  # run mode, provenance, grid file: set by caller
 
     def to_dict(self) -> dict:
         return {
@@ -68,6 +83,10 @@ class TuningResult:
             "selected_index": self.selected_index,
             "selected_config": self.selected_config,
             "ranking": self.ranking,
+            "selection_margin": self.selection_margin,
+            "max_mean_final_accuracy": self.max_mean_final_accuracy,
+            "candidates_within_margin": self.candidates_within_margin,
+            "context": self.context,
         }
 
     def write_json(self, path) -> None:
@@ -93,6 +112,8 @@ def tune(
     *,
     selection_seeds=DEFAULT_SELECTION_SEEDS,
     expected_runs: int | None = None,
+    margin: float = SELECTION_MARGIN,
+    context: dict | None = None,
 ) -> TuningResult:
     """Run ``factory(config)`` for every grid entry and selection seed on the validation view.
 
@@ -178,17 +199,37 @@ def tune(
                 else None,
             }
         )
-    ranking = sorted(
-        (c["config_index"] for c in configs if c["eligible"]),
+    eligible_ids = [c["config_index"] for c in configs if c["eligible"]]
+    ranking = sorted(  # descriptive order by accuracy; the selection rule is below
+        eligible_ids,
         key=lambda i: (
             -configs[i]["mean_final_accuracy"],
             configs[i]["mean_forgetting"],
             i,
         ),
     )
-    selected = ranking[0] if ranking else None
+    best = candidates = selected = None
+    if eligible_ids:
+        best = max(configs[i]["mean_final_accuracy"] for i in eligible_ids)
+        candidates = [
+            i
+            for i in eligible_ids
+            if configs[i]["mean_final_accuracy"] >= best - margin - 1e-12
+        ]
+        selected = min(
+            candidates,
+            key=lambda i: (
+                configs[i]["mean_forgetting"],
+                -configs[i]["mean_final_accuracy"],
+                i,
+            ),
+        )
     for c in configs:
-        c["rank"] = ranking.index(c["config_index"]) + 1 if c["eligible"] else None
+        c["accuracy_rank"] = (
+            ranking.index(c["config_index"]) + 1 if c["eligible"] else None
+        )
+        c["within_margin_of_max"] = bool(candidates and c["config_index"] in candidates)
+        c["selected"] = c["config_index"] == selected
     return TuningResult(
         algorithm=algorithm,
         criterion=CRITERION,
@@ -210,4 +251,8 @@ def tune(
         selected_index=selected,
         selected_config=None if selected is None else grid[selected],
         ranking=ranking,
+        selection_margin=margin,
+        max_mean_final_accuracy=best,
+        candidates_within_margin=candidates or [],
+        context=dict(context or {}),
     )

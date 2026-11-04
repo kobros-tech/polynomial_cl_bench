@@ -1,0 +1,85 @@
+{
+  "algorithm": "polynomial_cl",
+  "approval_status": "proposed",
+  "approval_note": "PROPOSED, not yet approved. The tuning CLI refuses to run this file until approval_status is changed to 'approved' by the maintainer's decision.",
+  "fixed": {
+    "condition": "expanding",
+    "strategy": "ordinary"
+  },
+  "protocol_requirements": {
+    "memory_per_class": 200,
+    "sampling": "class_balanced"
+  },
+  "selection": {
+    "seeds": [
+      100,
+      101
+    ],
+    "expected_runs": 30,
+    "margin": 0.005,
+    "rule": "candidates within 0.005 of the maximum mean final accuracy; among them the lowest mean forgetting; exact ties: higher accuracy, then grid order",
+    "split": "protocol.validation (holdout_fraction 0.1, holdout_seed 123 of the training data)"
+  },
+  "grid": [
+    {
+      "learning_rate": 0.01,
+      "feature_power": 0.0
+    },
+    {
+      "learning_rate": 0.03,
+      "feature_power": 0.0
+    },
+    {
+      "learning_rate": 0.1,
+      "feature_power": 0.0
+    },
+    {
+      "learning_rate": 0.3,
+      "feature_power": 0.0
+    },
+    {
+      "learning_rate": 1.0,
+      "feature_power": 0.0
+    },
+    {
+      "learning_rate": 0.01,
+      "feature_power": 0.5
+    },
+    {
+      "learning_rate": 0.03,
+      "feature_power": 0.5
+    },
+    {
+      "learning_rate": 0.1,
+      "feature_power": 0.5
+    },
+    {
+      "learning_rate": 0.3,
+      "feature_power": 0.5
+    },
+    {
+      "learning_rate": 1.0,
+      "feature_power": 0.5
+    },
+    {
+      "learning_rate": 0.01,
+      "feature_power": 1.0
+    },
+    {
+      "learning_rate": 0.03,
+      "feature_power": 1.0
+    },
+    {
+      "learning_rate": 0.1,
+      "feature_power": 1.0
+    },
+    {
+      "learning_rate": 0.3,
+      "feature_power": 1.0
+    },
+    {
+      "learning_rate": 1.0,
+      "feature_power": 1.0
+    }
+  ]
+}

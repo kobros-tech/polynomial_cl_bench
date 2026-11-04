@@ -120,6 +120,15 @@ Also inspected: `experiments/rate_selection.py` validates feature power x learni
     BENCH_SLOW=1 PYTHONPATH=tests python3 -m unittest test_full_split_mnist -v   # real data, ~45 s
 
 Place the four MNIST `.gz` archives in `data/mnist/` (git-ignored). The benchmark never downloads.
+Required files and sha256 (from `configs/split_mnist_cil_v1.json`, enforced before any loading):
+
+    train-images-idx3-ubyte.gz  440fcabf73cc546fa21475e81ea370265605f56be210a4024d2ca8f203523609
+    train-labels-idx1-ubyte.gz  3552534a0a558bbed6aed32b30c495cca23d567ec52cac8be1a0730e8010255c
+    t10k-images-idx3-ubyte.gz   8d422c7b0a1c1c79245a5bcf07fe86e33eeafee792b84584aec276f5a2dbc4e6
+    t10k-labels-idx1-ubyte.gz   f7ae60f92e00ec6debd23a6088c31dbd2371eca3ffa0defaefb259924204aec6
+
+Check them with `python3 -m polynomial_cl_bench.verify_data --data-dir data/mnist` (exit 0 only when all
+four match). The files are the standard MNIST archives under exactly these names (not decompressed).
 
 ## Open items / limitations
 
@@ -149,8 +158,20 @@ Implemented (all tested against the real core, `python3 -m unittest discover -s 
   configuration ineligible. Same function for ER-MLP and the polynomial reference.
 - Official-run provenance rules (above).
 
-Not provided, on purpose: the 15-configuration grids. They were approved in a design that is not in this
-repository; no grid is shipped, so nothing is mistaken for the approved one. The existing untuned
-polynomial reference config is unchanged and remains a separate reproducibility baseline.
+Validation tuning (`python3 -m polynomial_cl_bench.tune --grid <grid> --out results/<name>.json`):
 
-Not run: real tuning or any real-MNIST experiment (no MNIST archives were available).
+- `configs/er_mlp_grid.json` (approved): H in {64, 128, 256} x lr in {0.01, 0.03, 0.1, 0.3, 1.0}, one ReLU
+  hidden layer, plain SGD (no momentum, no weight decay), class-balanced sampling, 200 replay exemplars per
+  class, selection seeds 100/101, 30 runs. Selection: candidates within 0.005 of the maximum mean final
+  accuracy; among them the lowest mean forgetting (exact ties: higher accuracy, then grid order).
+- `configs/polynomial_grid.json` (**proposed, not approved**): lr in {0.01, 0.03, 0.1, 0.3, 1.0} x
+  feature_power in {0, 0.5, 1}, expanding/ordinary, same split, seeds, budget and rule. The runner refuses
+  any grid whose `approval_status` is not `approved`.
+- The runner writes every run (failed and divergent ones included) to JSON, the complete validation table to
+  Markdown beside it, and never overwrites an existing result. `--mode official` applies the unchanged
+  provenance rules; a development-mode result records its provenance and `official_eligible`.
+
+`python3 tools/mutation_check.py` breaks the source in 27 ways and checks that the tests notice
+(26 caught, 1 proved behaviourally equivalent, 0 missed).
+
+Not run: tuning on real MNIST (the archives were not available), so no hyperparameter has been selected.
