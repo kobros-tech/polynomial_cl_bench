@@ -4,11 +4,12 @@ Independent benchmark environment for continual-learning algorithms. Dependency 
 strictly `polynomial_cl_bench -> polynomial_cl`; the core package is installed from a pinned
 commit and is never modified or patched.
 
-**Status: Phase 1 (partial); Phase 2 (ER-MLP) started, not complete.** Implemented: protocol config,
-dataset verification/loading, adapter contract, polynomial adapter, benchmark-owned metrics, and the
-Phase 2 official-run provenance rules (below). **Not yet implemented:** the ER-MLP competitor, the
-shared experience/replay plan, sampling-equivalence tests, validation tuning, runner, result
-records, platforms. See "Phase 2 status" at the end.
+**Status: Phase 3 implemented (runner, multi-seed experiments, resource measurement, aggregation,
+failure handling, experiment validation). Phase 3 has not been run against the real core or real
+MNIST by its author**: see "Phase 3 status and what is unverified" at the end. Implemented before:
+protocol config, dataset verification/loading, adapter contract, polynomial adapter, ER-MLP competitor,
+shared experience/replay plan, validation tuning, official-run provenance rules. **Not implemented:**
+Codabench/OpenML integrations (Phase 4), reporting beyond a Markdown summary (Phase 5).
 
 ## Layout
 
@@ -20,6 +21,15 @@ records, platforms. See "Phase 2 status" at the end.
     src/polynomial_cl_bench/metrics.py         accuracy-matrix metrics (independent of the core)
     src/polynomial_cl_bench/algorithms/base.py SequenceAdapter contract, SequenceResult
     src/polynomial_cl_bench/algorithms/polynomial.py  wrapper around core run_condition
+    src/polynomial_cl_bench/results.py         versioned run records (schema 1.0), validation, atomic writes
+    src/polynomial_cl_bench/resources.py       wall/CPU time, peak RSS during a run, environment capture
+    src/polynomial_cl_bench/runner.py          experiment spec, execute_run, resume/retry, CLI
+    src/polynomial_cl_bench/worker.py          one run in a fresh process (process isolation)
+    src/polynomial_cl_bench/aggregate.py       mean/std/CI across seeds, paired comparisons
+    src/polynomial_cl_bench/validation.py      experiment-level integrity checks and publication blockers
+    src/polynomial_cl_bench/summarize.py       validate + aggregate a results directory, write summary.json/.md
+    configs/experiment_tuned_comparison.json   the intended comparison: both algorithms from validation tuning
+    configs/experiment_polynomial_reference.json  single-algorithm run of the (untuned) reference config
 
 ## Protocol v1.0 (Split MNIST, class-incremental)
 
@@ -172,7 +182,100 @@ Validation tuning (`python3 -m polynomial_cl_bench.tune --grid <grid> --out resu
   Markdown beside it, and never overwrites an existing result. `--mode official` applies the unchanged
   provenance rules; a development-mode result records its provenance and `official_eligible`.
 
-`python3 tools/mutation_check.py` breaks the source in 27 ways and checks that the tests notice
+`python3 tools/mutation_check.py` (Phase 1-2 code) breaks the source in 27 ways and checks that the tests notice
 (26 caught, 1 empirically equivalent over the tested cases (not proved), 0 missed).
 
 Not run: tuning on real MNIST (the archives were not available), so no hyperparameter has been selected.
+
+## Phase 3: reliable comparisons
+
+Workflow (every step is a separate command; nothing is rerun by a later step):
+
+    # 1. validation-only tuning, one per algorithm (Phase 2)
+    python3 -m polynomial_cl_bench.tune --grid configs/er_mlp_grid.json --out results/tuning_er_mlp.json
+    python3 -m polynomial_cl_bench.tune --grid configs/polynomial_grid.json --out results/tuning_polynomial.json
+    # 2. the experiment: every algorithm x every protocol seed, one fresh process per run
+    python3 -m polynomial_cl_bench.runner --spec configs/experiment_tuned_comparison.json \
+        --data-dir data/mnist --out results/tuned_comparison --reproduce-check
+    # 3. interrupted, or some runs failed? continue without mixing anything
+    python3 -m polynomial_cl_bench.runner --spec ... --out results/tuned_comparison --resume [--retry-failed]
+    # 4. validate + aggregate (also done at the end of step 2)
+    python3 -m polynomial_cl_bench.summarize --dir results/tuned_comparison
+
+Output directory (git-ignored): `manifest.json` (resolved experiment + fingerprint), `runs/<label>__seed<k>.json`
+(one record per run; archived earlier attempts as `.attempt<n>.json`), `reproducibility/`, `summary.json`,
+`summary.md`.
+
+**Result records (schema 1.0).** Each record holds algorithm + resolved configuration + hyper-parameter
+provenance, dataset and protocol identity, seed, plan fingerprint, training budget, memory policy with
+the budget and actual replay use per experience, the accuracy matrix and every metric (all recomputed by
+this package from the matrix), resources, environment (Python, numpy, platform, thread settings, **core
+and benchmark commits**), timestamps, status and error. `null` means not measured, never zero. A record is
+re-validated on write and on read: run key, every metric, matrix shape/NaN pattern, memory <= budget.
+
+**Resources.** Measured by the runner around `run_sequence`, identically for every algorithm: wall time,
+CPU time, and peak RSS *during the run* (Linux: the kernel's peak counter is reset just before the run;
+elsewhere `null`). Peak memory is an absolute RSS and includes the loaded dataset, so
+`rss_before_run_mb` is stored beside it; with process isolation that baseline is the same for every
+algorithm. Training/inference time and parameter count are adapter-reported (`null` for the polynomial
+core, which cannot separate them). Wall time includes in-loop evaluation and, for the polynomial adapter,
+feature construction. Runs are sequential by design (concurrency would distort timings). Per-class
+accuracy is `null`: adapters return an accuracy matrix only.
+
+**Failures are results.** Adapter exceptions, divergence, malformed matrices, an adapter that did not use the
+shared plan, replay above the budget, worker crashes and timeouts all become records with status
+`failed`/`diverged`/`crashed`/`timeout`. Aggregation reports completed/failed/missing counts per algorithm
+and lists every failure; statistics use completed runs only and state their `n`. An unreadable or
+hand-edited record is reported as a problem and counted as missing, not skipped. Only an official-mode
+provenance refusal or Ctrl-C stops an experiment.
+
+**Resume without mixing.** Resuming requires the same resolved experiment (manifest fingerprint over
+protocol, all algorithm configurations, seeds, mode, split, isolation), matching run keys, and the same
+core/benchmark commits; otherwise it is refused. Failed runs are re-run only with `--retry-failed`, and
+the old record is kept.
+
+**Tuned configurations.** An algorithm entry with `tuning_result` takes its hyper-parameters from that
+validation-only tuning file, after checking its protocol fingerprint, validation split, that it selected
+something, and that its seeds are disjoint from the experiment's. Its sha256 and selection details are
+recorded in the run records.
+
+**Statistics.** Mean, sample std (ddof=1), 95% t-interval, n; paired differences per seed (a - b) with
+counts of pairs where each side is higher. Descriptive only: seeds vary initialisation, sampling and
+replay selection, **not** the data split; with few seeds intervals are wide and assume roughly normal
+differences. No p-values, no "better/worse" verdicts.
+
+**Experiment validation** (`validation.py`) separates *integrity problems* (must be zero: a record
+contradicting the manifest, different plans for one seed across algorithms, different dataset arrays,
+mixed commits, missing/unexpected runs, a disagreement with the core's own reported metrics) from
+*publication blockers* (not an error, but the comparison is not publishable: not official mode,
+unverified provenance, failed runs, non-test split, seeds differing from the protocol, hyper-parameters not
+from validation tuning, reproducibility check missing or not exact). `summary.md` prints both.
+
+## Phase 3 status and what is unverified
+
+Verified (core-free tests with fake adapters, `tests/test_runner.py`, `tests/test_results_and_aggregation.py`):
+record schema and tamper detection, atomic writes, multi-algorithm/multi-seed execution, plan sharing,
+failure/divergence/crash/timeout records, resume/retry/mismatch refusals, aggregation numbers, paired
+comparisons, experiment validation, tuning-result checks. `python3 tools/mutation_check_phase3.py` breaks
+the new code in 22 ways; all 22 are noticed by these tests.
+
+**Not verified by the author:** the Phase 3 code was written in an environment with no network, so the
+pinned core could not be installed and no real MNIST was available. `tests/test_runner_integration.py`
+(real worker subprocess, ER-MLP, reproducibility, peak memory; and the polynomial adapter through the
+runner including the agreement check against the core's own metrics) was run only against a minimal
+stand-in for the core's API written for that session, **not** the real core. Therefore:
+
+- the polynomial adapter through the runner (`PolynomialThroughTheRunner`) has never executed;
+- `PolynomialAdapter.from_dict` is a small refactor of `from_file` (same behaviour, not exercised against the core);
+- no full-Split-MNIST comparison, no tuning on real data, and no timing/memory numbers on real runs exist.
+
+Run `python3 -m unittest discover -s tests` and `tests/test_runner_integration.py` with the real core
+installed before relying on any of this. Until tuning has been run on real MNIST, the configs in
+`configs/experiment_tuned_comparison.json` cannot be used (the tuning result files do not exist), which is
+intended: `experiment_polynomial_reference.json` is the only runnable experiment and is correctly marked
+non-publishable.
+
+Known limits: per-class accuracy and a separate polynomial training/inference time are unavailable; peak
+memory is `null` off Linux; the reproducibility check re-runs one seed per algorithm (exact equality, so
+multi-threaded BLAS may report a mismatch: pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS`
+to 1 and repeat).

@@ -87,8 +87,7 @@ class PolynomialAdapter:
         )
 
     @classmethod
-    def from_file(cls, path, mode: str = "development") -> PolynomialAdapter:
-        raw = json.loads(Path(path).read_text())
+    def from_dict(cls, raw: dict, mode: str = "development") -> PolynomialAdapter:
         if raw.get("algorithm") != "polynomial_cl":
             raise AdapterError("not a polynomial_cl algorithm configuration")
         return cls(
@@ -100,6 +99,10 @@ class PolynomialAdapter:
             role=raw.get("role", "experimental"),
             mode=mode,
         )
+
+    @classmethod
+    def from_file(cls, path, mode: str = "development") -> PolynomialAdapter:
+        return cls.from_dict(json.loads(Path(path).read_text()), mode=mode)
 
     def describe(self) -> dict:
         learning_rate = (

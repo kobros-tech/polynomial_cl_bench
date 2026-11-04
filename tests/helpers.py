@@ -67,3 +67,40 @@ def write_idx_labels(path, labels):
         f.write(
             struct.pack(">II", 2049, len(labels)) + labels.astype(np.uint8).tobytes()
         )
+
+
+# --- Phase 3 (runner) helpers: core-free ---------------------------------------------------
+
+import hashlib
+from dataclasses import replace as _replace
+
+MNIST_FILES = (
+    "train-images-idx3-ubyte.gz",
+    "train-labels-idx1-ubyte.gz",
+    "t10k-images-idx3-ubyte.gz",
+    "t10k-labels-idx1-ubyte.gz",
+)
+
+
+def fake_mnist_protocol(root: Path, **changes) -> Protocol:
+    """Tiny valid-format MNIST archives under ``root`` and a protocol that pins their hashes."""
+    rng = np.random.default_rng(0)
+    write_idx_images(root / MNIST_FILES[0], rng.integers(0, 256, (200, 784)))
+    write_idx_labels(root / MNIST_FILES[1], np.arange(200) % 10)
+    write_idx_images(root / MNIST_FILES[2], rng.integers(0, 256, (100, 784)))
+    write_idx_labels(root / MNIST_FILES[3], np.arange(100) % 10)
+    hashes = {
+        n: hashlib.sha256((root / n).read_bytes()).hexdigest() for n in MNIST_FILES
+    }
+    base = shipped_protocol()
+    return _replace(
+        base,
+        dataset={**base.dataset, "files": hashes},
+        **{
+            "epochs": 1,
+            "batch_size": 32,
+            "memory_per_class": 5,
+            "seeds": (0, 1),
+            **changes,
+        },
+    )

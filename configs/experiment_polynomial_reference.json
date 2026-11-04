@@ -1,0 +1,11 @@
+{
+  "name": "polynomial_reference",
+  "protocol": "split_mnist_cil_v1.json",
+  "seeds": null,
+  "mode": "development",
+  "evaluation_split": "test",
+  "isolation": "process",
+  "algorithms": [
+    {"label": "polynomial_reference", "config": "polynomial_expanding_ordinary.json"}
+  ]
+}

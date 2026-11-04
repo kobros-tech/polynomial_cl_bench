@@ -1,0 +1,6 @@
+{
+  "algorithm": "er_mlp",
+  "role": "primary",
+  "replay": true,
+  "note": "Tunable keys (hidden, learning_rate) are deliberately absent: the experiment spec fills them from a validation tuning result."
+}

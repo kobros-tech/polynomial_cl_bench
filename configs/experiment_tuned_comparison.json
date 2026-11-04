@@ -1,0 +1,21 @@
+{
+  "name": "tuned_comparison",
+  "protocol": "split_mnist_cil_v1.json",
+  "seeds": null,
+  "mode": "official",
+  "evaluation_split": "test",
+  "isolation": "process",
+  "timeout_seconds": 7200,
+  "algorithms": [
+    {
+      "label": "polynomial",
+      "config": "polynomial_tuned_base.json",
+      "tuning_result": "../results/tuning_polynomial.json"
+    },
+    {
+      "label": "er_mlp",
+      "config": "er_mlp_tuned_base.json",
+      "tuning_result": "../results/tuning_er_mlp.json"
+    }
+  ]
+}

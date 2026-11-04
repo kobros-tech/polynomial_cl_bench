@@ -1,0 +1,7 @@
+{
+  "algorithm": "polynomial_cl",
+  "role": "experimental",
+  "condition": "expanding",
+  "strategy": "ordinary",
+  "note": "Tunable keys (learning_rate, feature_power) are deliberately absent: the experiment spec fills them from a validation tuning result."
+}
