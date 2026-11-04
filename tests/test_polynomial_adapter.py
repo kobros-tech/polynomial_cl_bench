@@ -1,17 +1,20 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 import json
 import unittest
 from unittest import mock
 
 import numpy as np
-
 from helpers import POLYNOMIAL_CONFIG_PATH, small_protocol, synthetic_dataset
 from polynomial_cl import metrics as core_metrics
 from polynomial_cl.class_incremental import TASK_ORDER
+
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms import polynomial as module
 from polynomial_cl_bench.algorithms.polynomial import AdapterError, PolynomialAdapter
-from polynomial_cl_bench.provenance import commit_from_direct_url, core_provenance
 from polynomial_cl_bench.datasets import array_fingerprint
+from polynomial_cl_bench.provenance import commit_from_direct_url, core_provenance
 
 
 def same(a, b):
@@ -45,7 +48,7 @@ class PolynomialAdapterTests(unittest.TestCase):
         spy = SpyRunCondition()
         with mock.patch.object(module, "run_condition", spy):
             result = self.run_adapter(seed=3)
-        (condition, _, _, _, kwargs), = spy.calls
+        ((condition, _, _, _, kwargs),) = spy.calls
         self.assertEqual(condition, "expanding")
         self.assertEqual(kwargs["strategy"], "ordinary")
         self.assertEqual(kwargs["sampling"], "class_balanced")
@@ -90,8 +93,12 @@ class PolynomialAdapterTests(unittest.TestCase):
         result = self.run_adapter()
         core = result.extras["core_reported"]
         m = result.accuracy_matrix
-        self.assertAlmostEqual(metrics.final_mean_accuracy(m), core["final_mean_accuracy"], places=12)
-        self.assertAlmostEqual(metrics.mean_forgetting(m), core["mean_forgetting"], places=12)
+        self.assertAlmostEqual(
+            metrics.final_mean_accuracy(m), core["final_mean_accuracy"], places=12
+        )
+        self.assertAlmostEqual(
+            metrics.mean_forgetting(m), core["mean_forgetting"], places=12
+        )
         np.testing.assert_allclose(
             metrics.forgetting_by_experience(m), core["forgetting_by_task"], atol=1e-12
         )
@@ -102,12 +109,18 @@ class PolynomialAdapterTests(unittest.TestCase):
             metrics.mean_accuracy_by_step(m), core["mean_accuracy_by_task"], atol=1e-12
         )
         np.testing.assert_allclose(
-            metrics.forgetting_by_experience(m), core_metrics.forgetting(m, 4), atol=1e-12
+            metrics.forgetting_by_experience(m),
+            core_metrics.forgetting(m, 4),
+            atol=1e-12,
         )
 
     def test_unavailable_resources_are_none_not_zero(self):
         r = self.run_adapter().resources
-        for key in ("training_time_seconds", "inference_time_seconds", "peak_memory_mb"):
+        for key in (
+            "training_time_seconds",
+            "inference_time_seconds",
+            "peak_memory_mb",
+        ):
             self.assertIsNone(r[key])
         self.assertGreater(r["wall_time_seconds_including_evaluation"], 0)
         self.assertEqual(r["n_parameters"], 969 * 10)
@@ -115,7 +128,9 @@ class PolynomialAdapterTests(unittest.TestCase):
     def test_algorithm_record_is_json_serialisable_and_complete(self):
         info = self.run_adapter().algorithm
         json.dumps(info)
-        self.assertEqual((info["condition"], info["strategy"]), ("expanding", "ordinary"))
+        self.assertEqual(
+            (info["condition"], info["strategy"]), ("expanding", "ordinary")
+        )
         self.assertEqual(info["configuration"]["learning_rate"], 0.1)
         self.assertIn("commit", info["core"])
         self.assertEqual(
@@ -125,7 +140,9 @@ class PolynomialAdapterTests(unittest.TestCase):
     def test_shipped_config_declares_unselected_defaults(self):
         adapter = PolynomialAdapter.from_file(POLYNOMIAL_CONFIG_PATH)
         info = adapter.describe()
-        self.assertEqual((info["condition"], info["strategy"]), ("expanding", "ordinary"))
+        self.assertEqual(
+            (info["condition"], info["strategy"]), ("expanding", "ordinary")
+        )
         self.assertEqual(
             info["hyperparameter_provenance"]["selection"],
             "core_default_not_validation_selected",
@@ -158,13 +175,16 @@ class PolynomialAdapterTests(unittest.TestCase):
         before = array_fingerprint(data.train_x, data.train_y, data.test_x, data.test_y)
         self.run_adapter(adapter, seed=1)
         self.assertEqual(
-            before, array_fingerprint(data.train_x, data.train_y, data.test_x, data.test_y)
+            before,
+            array_fingerprint(data.train_x, data.train_y, data.test_x, data.test_y),
         )
         self.assertEqual(
             self.dataset.fingerprint,
             array_fingerprint(
-                self.dataset.train_x, self.dataset.train_y,
-                self.dataset.test_x, self.dataset.test_y,
+                self.dataset.train_x,
+                self.dataset.train_y,
+                self.dataset.test_x,
+                self.dataset.test_y,
             ),
         )
 
@@ -182,7 +202,10 @@ class PolynomialAdapterTests(unittest.TestCase):
 
     # --- provenance ---------------------------------------------------------------------------
     def test_commit_parsed_from_pip_direct_url(self):
-        url = {"url": "https://example.invalid/r.git", "vcs_info": {"vcs": "git", "commit_id": "ab" * 20}}
+        url = {
+            "url": "https://example.invalid/r.git",
+            "vcs_info": {"vcs": "git", "commit_id": "ab" * 20},
+        }
         self.assertEqual(commit_from_direct_url(url), "ab" * 20)
         self.assertIsNone(commit_from_direct_url({"url": "file:///x", "dir_info": {}}))
         self.assertIsNone(commit_from_direct_url(None))

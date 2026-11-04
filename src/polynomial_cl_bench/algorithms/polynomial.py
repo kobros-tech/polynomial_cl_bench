@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 """Adapter wrapping a complete ``polynomial_cl`` class-incremental run.
 
 The core exposes ``run_condition``, which trains all experiences and evaluates after each in a
@@ -16,29 +19,27 @@ import time
 from pathlib import Path
 
 import numpy as np
-
 from polynomial_cl.class_incremental import (
-    TASK_ORDER,
     make_feature_data,
-    make_task_plan,
     run_condition,
 )
 from polynomial_cl.class_incremental.experiment import CONDITIONS, STRATEGIES
 from polynomial_cl.class_incremental.training import SAMPLING_POLICIES
 
 from ..datasets import SplitMNIST
+from ..plan import check_inputs, resolve_plan
 from ..protocol import Protocol
-from ..provenance import RUN_MODES, core_provenance, enforce_run_mode
-from .base import SequenceResult
+from ..provenance import (
+    RUN_MODES,
+    benchmark_provenance,
+    core_provenance,
+    enforce_run_mode,
+)
+from .base import AdapterError, SequenceResult  # AdapterError re-exported for importers
 
 N_OUTPUTS = 10  # the core's single softmax head
 
-
-class AdapterError(RuntimeError):
-    """The adapter cannot honour the protocol."""
-
-
-ROLES = ("primary_reference", "experimental")
+ROLES = ("primary_reference", "experimental", "validation_candidate")
 
 
 class PolynomialAdapter:
@@ -55,9 +56,13 @@ class PolynomialAdapter:
         mode: str = "development",
     ):
         if condition not in CONDITIONS:
-            raise AdapterError(f"unknown condition {condition!r}; core supports {CONDITIONS}")
+            raise AdapterError(
+                f"unknown condition {condition!r}; core supports {CONDITIONS}"
+            )
         if strategy not in STRATEGIES:
-            raise AdapterError(f"unknown strategy {strategy!r}; core supports {STRATEGIES}")
+            raise AdapterError(
+                f"unknown strategy {strategy!r}; core supports {STRATEGIES}"
+            )
         if mode not in RUN_MODES:
             raise AdapterError(f"mode must be one of {RUN_MODES}")
         if role not in ROLES:
@@ -69,10 +74,12 @@ class PolynomialAdapter:
         self.hyperparameter_provenance = hyperparameter_provenance or {}
         self.role = role
         self.mode = mode
-        self._features = None  # (dataset fingerprint, FeatureData); read-only, shared by runs
+        self._features = (
+            None  # (dataset fingerprint, FeatureData); read-only, shared by runs
+        )
 
     @classmethod
-    def from_file(cls, path, mode: str = "development") -> "PolynomialAdapter":
+    def from_file(cls, path, mode: str = "development") -> PolynomialAdapter:
         raw = json.loads(Path(path).read_text())
         if raw.get("algorithm") != "polynomial_cl":
             raise AdapterError("not a polynomial_cl algorithm configuration")
@@ -104,6 +111,7 @@ class PolynomialAdapter:
             },
             "hyperparameter_provenance": self.hyperparameter_provenance,
             "core": core_provenance(),
+            "benchmark": benchmark_provenance(),
         }
 
     def _feature_data(self, dataset: SplitMNIST):
@@ -117,27 +125,22 @@ class PolynomialAdapter:
             self._features = (dataset.fingerprint, data)
         return self._features[1]
 
-    def run_sequence(self, dataset: SplitMNIST, protocol: Protocol, seed: int) -> SequenceResult:
-        enforce_run_mode(self.mode, core_provenance())  # raises in official mode if not pinned
-        if tuple(tuple(t) for t in protocol.task_order) != tuple(TASK_ORDER):
-            raise AdapterError(
-                "the core's task order is fixed to "
-                f"{TASK_ORDER}; the protocol asks for {protocol.task_order}"
-            )
+    def run_sequence(
+        self, dataset: SplitMNIST, protocol: Protocol, seed: int, plan=None
+    ) -> SequenceResult:
+        # Official mode raises before any training unless core and benchmark are verified.
+        enforce_run_mode(self.mode, core_provenance(), benchmark_provenance())
+        check_inputs(dataset, protocol)
         if protocol.sampling not in SAMPLING_POLICIES:
             raise AdapterError(
                 f"core does not support sampling {protocol.sampling!r}; "
                 f"supported: {SAMPLING_POLICIES}"
             )
-        if dataset.projection_seed != protocol.projection_seed:
-            raise AdapterError(
-                f"dataset was projected with seed {dataset.projection_seed}; "
-                f"the protocol requires {protocol.projection_seed}"
-            )
-        if dataset.source_hashes != protocol.dataset["files"]:
-            raise AdapterError("dataset was not built from the protocol's verified files")
         data = self._feature_data(dataset)
-        tasks, memory = make_task_plan(data.train_y, seed, protocol.memory_per_class)
+        plan = resolve_plan(
+            dataset, protocol, seed, plan
+        )  # shared, or the identical own plan
+        tasks, memory = list(plan.tasks), dict(plan.memory)
         started = time.perf_counter()
         record = run_condition(
             self.condition,
@@ -165,9 +168,14 @@ class PolynomialAdapter:
                 f"configured {expected_rate!r}"
             )
         if (record["condition"], record["strategy"]) != (self.condition, self.strategy):
-            raise AdapterError("core ran a different condition or strategy than configured")
+            raise AdapterError(
+                "core ran a different condition or strategy than configured"
+            )
         matrix = np.array(
-            [[np.nan if v is None else v for v in row] for row in record["accuracy_matrix"]],
+            [
+                [np.nan if v is None else v for v in row]
+                for row in record["accuracy_matrix"]
+            ],
             dtype=float,
         )
         replays = self.strategy != "ordinary_no_replay"
@@ -199,7 +207,9 @@ class PolynomialAdapter:
                     "fingerprint": dataset.fingerprint,
                     "source_hashes": dict(dataset.source_hashes),
                     "projection_seed": dataset.projection_seed,
+                    "evaluation_split": dataset.evaluation_split,
                 },
+                "plan_fingerprint": plan.fingerprint(),
                 "task_order": [list(t) for t in protocol.task_order],
                 "condition": self.condition,
                 "strategy": self.strategy,

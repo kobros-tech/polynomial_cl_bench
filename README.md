@@ -4,9 +4,11 @@ Independent benchmark environment for continual-learning algorithms. Dependency 
 strictly `polynomial_cl_bench -> polynomial_cl`; the core package is installed from a pinned
 commit and is never modified or patched.
 
-**Status: Phase 1 (partial).** Implemented: protocol config, dataset verification/loading,
-adapter contract, polynomial adapter, benchmark-owned metrics. Not yet implemented: runner,
-result records/serialisation, competitors, resource measurement beyond wall time, platforms.
+**Status: Phase 1 (partial); Phase 2 (ER-MLP) started, not complete.** Implemented: protocol config,
+dataset verification/loading, adapter contract, polynomial adapter, benchmark-owned metrics, and the
+Phase 2 official-run provenance rules (below). **Not yet implemented:** the ER-MLP competitor, the
+shared experience/replay plan, sampling-equivalence tests, validation tuning, runner, result
+records, platforms. See "Phase 2 status" at the end.
 
 ## Layout
 
@@ -51,7 +53,7 @@ adapter wraps one complete run and calls it with `sampling` passed explicitly. C
 ## Polynomial configurations (neither is claimed optimal)
 
 | Config | Role | Learning rate | Basis |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `polynomial_expanding_ordinary.json` | `primary_reference` | 0.1 | Core default (`experiment.LEARNING_RATE`), **not** validation-selected. Used because it reproduces the core's committed result, which validates the integration. |
 | `polynomial_expanding_ordinary_per_degree.json` | `experimental` | [0.75, 1.5, 1.5, 6.0] | Candidate `combined` from the core's per-degree study (validation split, selection seeds 0-2, class_balanced, ordinary). A limited candidate search, not a systematic tuning procedure; not re-run here. |
 
@@ -86,22 +88,28 @@ Also inspected: `experiments/rate_selection.py` validates feature power x learni
   `remote_verified: false`) or `unknown`. `matches_pin` compares against the pin in this package's
   metadata. A local commit never counts as remote-verified.
 
-## Run modes and the pinned core
+## Run modes and provenance
 
-- `development` (default): any installed core is accepted. The result records `run_mode`, the core
-  commit/source and `official_problems` (every reason the installation would not qualify).
-- `official`: refused with `ProvenanceError`, before any training, unless the core commit equals the
-  pin in this package's metadata and the checkout has no uncommitted tracked changes (an unknown or
-  mismatched commit is also refused). `PolynomialAdapter(..., mode="official")`.
-- **Remote verification is separate and currently `unverified`** (`provenance.PIN_REMOTE_STATUS`).
-  Until someone confirms the pinned commit on the GitHub remote and changes that constant, every
-  official run emits `RemoteUnverifiedWarning` and every record carries `pin_remote_status` and
-  `remote_verified` (false for a local checkout, true only for a pip VCS install).
+- `development` (default): any installed core is accepted. The result records `run_mode`, core and
+  benchmark provenance, and `official_problems` (every reason the run would not qualify).
+- `official`: refused with `ProvenanceError`, before any training, unless **all** hold:
+  - the core commit equals the pin in this package's metadata **and its remote identity is
+    verified**: a pip VCS install whose recorded URL is the pinned URL, or a **clean** local checkout
+    whose remote URL is the pinned URL and whose remote-tracking refs contain the pinned commit;
+  - the benchmark has a determinable commit (clean git checkout whose tracked file is this package, or
+    a pip VCS install). A dirty benchmark checkout is rejected.
+- "Dirty" means modified tracked files **or untracked non-ignored files**, for core and benchmark.
+- An unverified remote is an **error**; there is no warning-only path (`RemoteUnverifiedWarning` and
+  `PIN_REMOTE_STATUS` were removed). Remote verification is offline evidence read from pip/git.
+  Limitation: a remote-tracking ref shows the commit was on the remote at the last fetch/push; it
+  cannot detect a later force-push or deletion (`git ls-remote` would, but needs the network).
+- Records carry `algorithm.core` (commit, source, remote URL, `remote_verified`,
+  `remote_verification`, pin fields, problems) and `algorithm.benchmark` (commit, source, problems).
 
 ## Reference checks (full Split MNIST, real data)
 
 | Config | Seed | Core record | Benchmark result |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | primary_reference | 0 | acc 0.6770214422462445, forgetting 0.0708057983859818 | identical |
 | experimental | 3 | acc 0.7734281931972611, forgetting 0.09086581818480258 | identical |
 
@@ -115,9 +123,34 @@ Place the four MNIST `.gz` archives in `data/mnist/` (git-ignored). The benchmar
 
 ## Open items / limitations
 
-- The pinned commit has **not** been verified on the GitHub remote (no network access when written).
-  Run `git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git` and confirm the commit is
-  reachable from a pushed branch before releasing. If the repo is private, installs need credentials.
-- Test runs so far used a local editable core (`local_git`, `matches_pin: true`), not a pip VCS install.
-- Official runs accept a clean local checkout at the pin (`remote_verified: false`); requiring a pip VCS install is an open choice.
+- The pinned commit has not been confirmed on the GitHub remote by this project (no network when
+  written). An official run now proves it per installation (see above); `git ls-remote` remains the
+  stronger check before releasing.
 - Test data and replay indices are handled inside the core; the adapter can only observe them.
+
+## Phase 2 status (ER-MLP)
+
+Implemented (all tested against the real core, `python3 -m unittest discover -s tests`):
+
+- `plan.py`: one `ExperiencePlan` per seed from the core's public `make_task_plan`; passed to every
+  adapter (`run_sequence(..., plan)`) so experiences and replay exemplars are identical by construction.
+  Plans are read-only, fingerprinted, and refused if seed, memory budget, task order or labels differ.
+- `datasets.validation_view`: the core's `holdout_split`, validation part placed in the `test_*` slots;
+  the real test arrays are not referenced. Results record `evaluation_split`.
+- `sampling.py`: the core's shuffled and class-balanced batching reproduced draw for draw (the core
+  only exposes it inside `fit_task`). `tests/test_sampling_equivalence.py` checks it against the core's
+  private batcher, against batches captured inside a real `fit_task`, end to end (a bias-free linear model
+  reproduces `fit_task`'s weights) and via the core's own `sampling_by_task` record.
+- `algorithms/er_mlp.py`: ER-MLP, concatenated-replay form, masked softmax over introduced classes,
+  plain SGD. `hidden` and `learning_rate` are required arguments; there are no defaults.
+  `replay=False` exists only as the separate role `ablation_no_replay`.
+- `tuning.py`: validation-only selection (seeds 100/101, disjoint from the evaluation seeds, accuracy
+  first; ties: lower mean forgetting, then grid order). Failed/diverged runs are kept and make a
+  configuration ineligible. Same function for ER-MLP and the polynomial reference.
+- Official-run provenance rules (above).
+
+Not provided, on purpose: the 15-configuration grids. They were approved in a design that is not in this
+repository; no grid is shipped, so nothing is mistaken for the approved one. The existing untuned
+polynomial reference config is unchanged and remains a separate reproducibility baseline.
+
+Not run: real tuning or any real-MNIST experiment (no MNIST archives were available).

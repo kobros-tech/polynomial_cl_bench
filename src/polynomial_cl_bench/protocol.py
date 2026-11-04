@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 """Benchmark protocol: an explicit, validated, algorithm-independent configuration.
 
 The protocol owns everything that must be identical for every algorithm: data, class
@@ -39,7 +42,7 @@ class Protocol:
     projection_description: str = ""
 
     @classmethod
-    def from_dict(cls, raw: dict) -> "Protocol":
+    def from_dict(cls, raw: dict) -> Protocol:
         try:
             training, memory = raw["training"], raw["memory"]
             protocol = cls(
@@ -64,7 +67,7 @@ class Protocol:
         return protocol
 
     @classmethod
-    def from_file(cls, path) -> "Protocol":
+    def from_file(cls, path) -> Protocol:
         return cls.from_dict(json.loads(Path(path).read_text()))
 
     def validate(self) -> None:
@@ -88,13 +91,17 @@ class Protocol:
         if not isinstance(self.projection_seed, int):
             raise ProtocolError("projection_seed must be an integer")
         if self.evaluation.get("schedule") not in EVALUATION_SCHEDULES:
-            raise ProtocolError(f"evaluation.schedule must be one of {EVALUATION_SCHEDULES}")
+            raise ProtocolError(
+                f"evaluation.schedule must be one of {EVALUATION_SCHEDULES}"
+            )
         files = self.dataset.get("files")
         if not files or not all(
             isinstance(h, str) and len(h) == 64 and set(h) <= set("0123456789abcdef")
             for h in files.values()
         ):
-            raise ProtocolError("dataset.files must map file names to sha256 hex digests")
+            raise ProtocolError(
+                "dataset.files must map file names to sha256 hex digests"
+            )
         if not 0 < self.validation.get("holdout_fraction", 0) < 1:
             raise ProtocolError("validation.holdout_fraction must be in (0, 1)")
 

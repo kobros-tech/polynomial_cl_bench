@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 import copy
 import json
 import re
@@ -5,6 +8,7 @@ import unittest
 from dataclasses import replace
 
 from helpers import PROTOCOL_PATH, ROOT, shipped_protocol
+
 from polynomial_cl_bench.protocol import Protocol, ProtocolError
 
 
@@ -25,8 +29,12 @@ class ProtocolTests(unittest.TestCase):
         p = shipped_protocol()
         self.assertEqual(Protocol.from_dict(p.to_dict()), p)
         self.assertEqual(p.fingerprint(), shipped_protocol().fingerprint())
-        self.assertNotEqual(p.fingerprint(), replace(p, sampling="shuffled").fingerprint())
-        self.assertNotEqual(p.fingerprint(), replace(p, projection_seed=1).fingerprint())
+        self.assertNotEqual(
+            p.fingerprint(), replace(p, sampling="shuffled").fingerprint()
+        )
+        self.assertNotEqual(
+            p.fingerprint(), replace(p, projection_seed=1).fingerprint()
+        )
 
     def test_protocol_has_no_algorithm_settings(self):
         text = json.dumps(raw())

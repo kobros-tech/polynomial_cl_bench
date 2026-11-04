@@ -1,8 +1,11 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 import unittest
 
 import numpy as np
-
 from polynomial_cl import metrics as core_metrics
+
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.metrics import MatrixError
 
@@ -18,7 +21,9 @@ class MetricTests(unittest.TestCase):
         np.testing.assert_allclose(
             metrics.mean_accuracy_by_step(R3), [0.9, 0.75, (0.6 + 0.5 + 0.9) / 3]
         )
-        np.testing.assert_allclose(metrics.forgetting_by_experience(R3), [0.3, 0.3, 0.0])
+        np.testing.assert_allclose(
+            metrics.forgetting_by_experience(R3), [0.3, 0.3, 0.0]
+        )
         self.assertAlmostEqual(metrics.mean_forgetting(R3), 0.3)
 
     def test_forgetting_uses_best_ever_accuracy_not_diagonal(self):
@@ -38,7 +43,9 @@ class MetricTests(unittest.TestCase):
             for i in range(t):
                 r[i, : i + 1] = rng.random(i + 1)
             core = core_metrics.forgetting(r, t - 1)
-            np.testing.assert_allclose(metrics.forgetting_by_experience(r), core, atol=1e-15)
+            np.testing.assert_allclose(
+                metrics.forgetting_by_experience(r), core, atol=1e-15
+            )
             self.assertAlmostEqual(
                 metrics.mean_forgetting(r), float(np.mean(core[:-1])), places=15
             )

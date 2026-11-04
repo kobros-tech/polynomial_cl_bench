@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 import hashlib
 import tempfile
 import unittest
@@ -7,8 +10,8 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
-
 from helpers import shipped_protocol, write_idx_images, write_idx_labels
+
 from polynomial_cl_bench.datasets import (
     DatasetVerificationError,
     load_split_mnist,
@@ -16,8 +19,10 @@ from polynomial_cl_bench.datasets import (
 )
 
 FILES = (
-    "train-images-idx3-ubyte.gz", "train-labels-idx1-ubyte.gz",
-    "t10k-images-idx3-ubyte.gz", "t10k-labels-idx1-ubyte.gz",
+    "train-images-idx3-ubyte.gz",
+    "train-labels-idx1-ubyte.gz",
+    "t10k-images-idx3-ubyte.gz",
+    "t10k-labels-idx1-ubyte.gz",
 )
 
 
@@ -65,11 +70,13 @@ class DatasetTests(unittest.TestCase):
 
     def test_missing_file_never_triggers_a_download(self):
         (self.root / FILES[2]).unlink()
-        with mock.patch.object(
-            urllib.request, "urlopen", side_effect=AssertionError("network used")
+        with (
+            mock.patch.object(
+                urllib.request, "urlopen", side_effect=AssertionError("network used")
+            ),
+            self.assertRaisesRegex(DatasetVerificationError, "missing"),
         ):
-            with self.assertRaisesRegex(DatasetVerificationError, "missing"):
-                load_split_mnist(self.protocol, self.root)
+            load_split_mnist(self.protocol, self.root)
 
     def test_shipped_hash_table_is_complete(self):
         # Structure only; the hashes themselves are checked against real files in test_full_split_mnist.
@@ -80,7 +87,9 @@ class DatasetTests(unittest.TestCase):
     def test_protocol_names_are_exactly_the_files_the_core_loader_reads(self):
         from polynomial_cl.class_incremental import mnist
 
-        self.assertEqual(set(shipped_protocol().dataset["files"]), set(mnist.FILES.values()))
+        self.assertEqual(
+            set(shipped_protocol().dataset["files"]), set(mnist.FILES.values())
+        )
 
     def test_every_file_the_core_reads_was_hashed_against_the_protocol(self):
         from polynomial_cl.class_incremental import mnist
@@ -90,11 +99,16 @@ class DatasetTests(unittest.TestCase):
 
         def spy(path, image):
             # Hash the file at the moment the core opens it.
-            reads.append((Path(path).name, hashlib.sha256(Path(path).read_bytes()).hexdigest()))
+            reads.append(
+                (Path(path).name, hashlib.sha256(Path(path).read_bytes()).hexdigest())
+            )
             return real(path, image)
 
-        with mock.patch.object(mnist, "read_idx", spy), mock.patch.object(
-            mnist, "fetch", side_effect=AssertionError("download attempted")
+        with (
+            mock.patch.object(mnist, "read_idx", spy),
+            mock.patch.object(
+                mnist, "fetch", side_effect=AssertionError("download attempted")
+            ),
         ):
             load_split_mnist(self.protocol, self.root)
         self.assertEqual(sorted(n for n, _ in reads), sorted(FILES))
@@ -116,9 +130,11 @@ class DatasetTests(unittest.TestCase):
                     f.write(b"tamper")
             return out
 
-        with mock.patch.object(mnist, "read_idx", swap_after_first_read):
-            with self.assertRaisesRegex(DatasetVerificationError, "hash mismatch"):
-                load_split_mnist(self.protocol, self.root)
+        with (
+            mock.patch.object(mnist, "read_idx", swap_after_first_read),
+            self.assertRaisesRegex(DatasetVerificationError, "hash mismatch"),
+        ):
+            load_split_mnist(self.protocol, self.root)
 
     def test_loaded_dataset_records_its_projection_seed_and_hashes(self):
         data = load_split_mnist(self.protocol, self.root)

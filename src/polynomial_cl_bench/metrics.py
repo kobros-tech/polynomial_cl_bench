@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 """Benchmark-owned metrics computed from an accuracy matrix.
 
 ``R[i, j]`` is the accuracy on the test examples of experience ``j`` after training on

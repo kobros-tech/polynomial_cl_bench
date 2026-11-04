@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mohamed Alkobrosli
+# SPDX-License-Identifier: MIT
+
 """Phase 1 review: the adapter must preserve the core's evaluation semantics, record every
 configuration value, and keep local provenance distinct from remote provenance."""
 
@@ -10,17 +13,15 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
-
-import polynomial_cl.class_incremental.experiment as experiment
-from polynomial_cl.class_incremental import TASK_ORDER
-from polynomial_cl.class_incremental.features import scaled_polynomial_features
-
 from helpers import (
     PER_DEGREE_CONFIG_PATH,
     POLYNOMIAL_CONFIG_PATH,
     small_protocol,
     synthetic_dataset,
 )
+from polynomial_cl.class_incremental import TASK_ORDER, experiment
+from polynomial_cl.class_incremental.features import scaled_polynomial_features
+
 from polynomial_cl_bench import provenance as prov
 from polynomial_cl_bench.algorithms import polynomial as module
 from polynomial_cl_bench.algorithms.polynomial import AdapterError, PolynomialAdapter
@@ -49,15 +50,20 @@ class EvaluationSemantics(unittest.TestCase):
         real_eval, real_fit = experiment.accuracy_by_task, experiment.fit_task
 
         def eval_spy(weights, test_x, test_y, n_seen):
-            cls.eval_calls.append((weights.copy(), np.array(test_x), np.array(test_y), n_seen))
+            cls.eval_calls.append(
+                (weights.copy(), np.array(test_x), np.array(test_y), n_seen)
+            )
             return real_eval(weights, test_x, test_y, n_seen)
 
         def fit_spy(weights, features, labels, replay_features, replay_labels, **kw):
             cls.fit_calls.append((np.array(labels), np.array(replay_labels), kw))
-            return real_fit(weights, features, labels, replay_features, replay_labels, **kw)
+            return real_fit(
+                weights, features, labels, replay_features, replay_labels, **kw
+            )
 
-        with mock.patch.object(experiment, "accuracy_by_task", eval_spy), mock.patch.object(
-            experiment, "fit_task", fit_spy
+        with (
+            mock.patch.object(experiment, "accuracy_by_task", eval_spy),
+            mock.patch.object(experiment, "fit_task", fit_spy),
         ):
             cls.result = PolynomialAdapter().run_sequence(cls.dataset, cls.protocol, 0)
 
@@ -65,10 +71,15 @@ class EvaluationSemantics(unittest.TestCase):
         self.assertEqual(len(self.eval_calls), 5)
         for step, (weights, _, test_y, _) in enumerate(self.eval_calls):
             count = weights.shape[0]
-            test_features = scaled_polynomial_features(self.dataset.test_x, 3)[:, :count]
+            test_features = scaled_polynomial_features(self.dataset.test_x, 3)[
+                :, :count
+            ]
             expected = independent_accuracy(
-                weights, test_features, np.asarray(self.dataset.test_y),
-                self.protocol.task_order, step,
+                weights,
+                test_features,
+                np.asarray(self.dataset.test_y),
+                self.protocol.task_order,
+                step,
             )
             np.testing.assert_allclose(
                 self.result.accuracy_matrix[step], expected, atol=1e-12, equal_nan=True
@@ -76,7 +87,9 @@ class EvaluationSemantics(unittest.TestCase):
 
     def test_evaluation_uses_the_independent_test_set(self):
         for weights, test_x, test_y, _ in self.eval_calls:
-            expected = scaled_polynomial_features(self.dataset.test_x, 3)[:, : weights.shape[0]]
+            expected = scaled_polynomial_features(self.dataset.test_x, 3)[
+                :, : weights.shape[0]
+            ]
             np.testing.assert_array_equal(test_y, self.dataset.test_y)
             np.testing.assert_allclose(test_x, expected, atol=1e-6)
             # None of the test labels/rows can be the training set (different draws).
@@ -85,7 +98,9 @@ class EvaluationSemantics(unittest.TestCase):
     def test_future_class_output_weights_are_never_trained(self):
         for step, (weights, _, _, _) in enumerate(self.eval_calls):
             n_seen = sum(len(t) for t in self.protocol.task_order[: step + 1])
-            self.assertTrue(np.all(weights[:, n_seen:] == 0), f"future columns moved at {step}")
+            self.assertTrue(
+                np.all(weights[:, n_seen:] == 0), f"future columns moved at {step}"
+            )
 
     def test_training_sees_only_current_experience_plus_old_class_replay(self):
         self.assertEqual(len(self.fit_calls), 5)
@@ -109,14 +124,22 @@ class CoreMaskingRule(unittest.TestCase):
         dataset = synthetic_dataset()
         features = scaled_polynomial_features(dataset.test_x, 3)
         weights = rng.normal(0, 0.1, size=(features.shape[1], 10)).astype(np.float32)
-        weights[0, 4:] += 50.0  # constant feature: future classes dominate unless masked
+        weights[0, 4:] += (
+            50.0  # constant feature: future classes dominate unless masked
+        )
         step = 1  # only classes 0-3 have been introduced
-        core = experiment.accuracy_by_task(weights, features, np.asarray(dataset.test_y), step + 1)
-        masked = independent_accuracy(weights, features, np.asarray(dataset.test_y), order, step)
+        core = experiment.accuracy_by_task(
+            weights, features, np.asarray(dataset.test_y), step + 1
+        )
+        masked = independent_accuracy(
+            weights, features, np.asarray(dataset.test_y), order, step
+        )
         np.testing.assert_allclose(core[: step + 1], masked[: step + 1], atol=1e-12)
         self.assertTrue(np.all(np.isnan(core[step + 1 :])))
         unmasked = np.argmax(features @ weights, axis=1)
-        self.assertTrue(np.all(unmasked >= 4))  # without masking, every prediction is wrong
+        self.assertTrue(
+            np.all(unmasked >= 4)
+        )  # without masking, every prediction is wrong
 
 
 class RunRecord(unittest.TestCase):
@@ -137,12 +160,16 @@ class RunRecord(unittest.TestCase):
         self.assertEqual((c["condition"], c["strategy"]), ("expanding", "ordinary"))
         self.assertEqual(c["learning_rate"], 0.1)
         self.assertEqual(c["feature_power"], 0.0)
-        self.assertEqual((c["epochs"], c["batch_size"], c["memory_per_class"]), (2, 16, 7))
+        self.assertEqual(
+            (c["epochs"], c["batch_size"], c["memory_per_class"]), (2, 16, 7)
+        )
         self.assertEqual(c["task_order"], [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]])
         self.assertEqual(c["protocol"]["fingerprint"], self.protocol.fingerprint())
         self.assertEqual(c["role"], "primary_reference")
         self.assertEqual(result.replay_examples_used_by_task, [0, 14, 28, 42, 56])
-        self.assertEqual(result.algorithm["core"]["commit"], prov.core_provenance()["commit"])
+        self.assertEqual(
+            result.algorithm["core"]["commit"], prov.core_provenance()["commit"]
+        )
         json.dumps(c)  # serialisable as is
 
     def test_changing_a_protocol_value_changes_the_recorded_fingerprint(self):
@@ -150,7 +177,10 @@ class RunRecord(unittest.TestCase):
         b = PolynomialAdapter().run_sequence(
             self.dataset, replace(self.protocol, sampling="shuffled"), 0
         )
-        self.assertNotEqual(a.run_config["protocol"]["fingerprint"], b.run_config["protocol"]["fingerprint"])
+        self.assertNotEqual(
+            a.run_config["protocol"]["fingerprint"],
+            b.run_config["protocol"]["fingerprint"],
+        )
         self.assertEqual(b.run_config["sampling"], "shuffled")
 
     def test_dataset_with_wrong_projection_or_unverified_source_is_refused(self):
@@ -169,9 +199,11 @@ class RunRecord(unittest.TestCase):
             record["learning_rate"] = 9.9
             return record
 
-        with mock.patch.object(module, "run_condition", lying):
-            with self.assertRaisesRegex(AdapterError, "learning_rate"):
-                PolynomialAdapter().run_sequence(self.dataset, self.protocol, 0)
+        with (
+            mock.patch.object(module, "run_condition", lying),
+            self.assertRaisesRegex(AdapterError, "learning_rate"),
+        ):
+            PolynomialAdapter().run_sequence(self.dataset, self.protocol, 0)
 
 
 class TwoConfigurations(unittest.TestCase):
@@ -183,14 +215,19 @@ class TwoConfigurations(unittest.TestCase):
         self.assertEqual(exp["role"], "experimental")
         self.assertEqual(exp["configuration"]["learning_rate"], [0.75, 1.5, 1.5, 6.0])
         for info in (ref, exp):
-            self.assertEqual((info["condition"], info["strategy"]), ("expanding", "ordinary"))
-            self.assertEqual(info["hyperparameter_provenance"]["optimality_claim"], "none")
+            self.assertEqual(
+                (info["condition"], info["strategy"]), ("expanding", "ordinary")
+            )
+            self.assertEqual(
+                info["hyperparameter_provenance"]["optimality_claim"], "none"
+            )
         self.assertEqual(
             exp["hyperparameter_provenance"]["selection"],
             "validation_selected_by_core_per_degree_study",
         )
         self.assertEqual(
-            ref["hyperparameter_provenance"]["selection"], "core_default_not_validation_selected"
+            ref["hyperparameter_provenance"]["selection"],
+            "core_default_not_validation_selected",
         )
 
     def test_per_degree_vector_reaches_the_core_and_runs(self):
@@ -229,7 +266,9 @@ class Provenance(unittest.TestCase):
         real = prov.metadata.distribution
 
         def distribution(name):
-            return FakeDistribution(direct_url) if name == "polynomial-cl" else real(name)
+            return (
+                FakeDistribution(direct_url) if name == "polynomial-cl" else real(name)
+            )
 
         with mock.patch.object(prov.metadata, "distribution", distribution):
             return prov.core_provenance()
@@ -238,20 +277,40 @@ class Provenance(unittest.TestCase):
         pin = prov.pinned_core_commit()
         self.assertRegex(pin, r"^[0-9a-f]{40}$")
         url = "https://github.com/kobros-tech/polynomial_cl_demo.git"
-        ok = self.provenance_for({"url": url, "vcs_info": {"vcs": "git", "commit_id": pin}})
+        ok = self.provenance_for(
+            {"url": url, "vcs_info": {"vcs": "git", "commit_id": pin}}
+        )
         self.assertEqual(
-            (ok["commit_source"], ok["remote_verified"], ok["matches_pin"], ok["remote_url"]),
+            (
+                ok["commit_source"],
+                ok["remote_verified"],
+                ok["matches_pin"],
+                ok["remote_url"],
+            ),
             ("pip_vcs_install", True, True, url),
         )
-        other = self.provenance_for({"url": url, "vcs_info": {"vcs": "git", "commit_id": "0" * 40}})
+        other = self.provenance_for(
+            {"url": url, "vcs_info": {"vcs": "git", "commit_id": "0" * 40}}
+        )
         self.assertFalse(other["matches_pin"])
 
     def test_local_checkout_is_never_reported_as_remote_verified(self):
         with tempfile.TemporaryDirectory() as tmp:
+
             def git(*args):
                 subprocess.run(
-                    ["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t", *args],
-                    check=True, capture_output=True,
+                    [
+                        "git",
+                        "-C",
+                        tmp,
+                        "-c",
+                        "user.name=t",
+                        "-c",
+                        "user.email=t@t",
+                        *args,
+                    ],
+                    check=True,
+                    capture_output=True,
                 )
 
             git("init", "-q")
@@ -259,7 +318,10 @@ class Provenance(unittest.TestCase):
             git("add", "f.txt")
             git("commit", "-q", "-m", "c")
             head = subprocess.run(
-                ["git", "-C", tmp, "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+                ["git", "-C", tmp, "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
             ).stdout.strip()
             url = {"url": f"file://{tmp}", "dir_info": {"editable": True}}
             clean = self.provenance_for(url)
@@ -269,10 +331,14 @@ class Provenance(unittest.TestCase):
             self.assertIsNone(clean["remote_url"])
             self.assertFalse(clean["matches_pin"])  # not the pinned commit
             (Path(tmp) / "f.txt").write_text("b")
-            self.assertEqual(self.provenance_for(url)["commit_source"], "local_git_dirty")
+            self.assertEqual(
+                self.provenance_for(url)["commit_source"], "local_git_dirty"
+            )
 
     def test_unknown_source_has_no_commit_and_no_claim(self):
-        info = self.provenance_for({"url": "https://example.invalid/pkg.whl", "archive_info": {}})
+        info = self.provenance_for(
+            {"url": "https://example.invalid/pkg.whl", "archive_info": {}}
+        )
         self.assertIsNone(info["commit"])
         self.assertEqual(info["commit_source"], "unknown")
         self.assertFalse(info["remote_verified"])
