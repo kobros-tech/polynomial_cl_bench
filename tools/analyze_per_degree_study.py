@@ -32,7 +32,8 @@ Two ranking bases are produced and must not be confused:
 Low forgetting is not a virtue in itself: a model that learns little forgets little. Every row
 therefore carries newest-experience accuracy so such degenerate winners are visible.
 
-Standard library only. Run:
+Selection rules come from ``polynomial_cl_bench.selection`` (install this package; the
+rest of the script uses the standard library only). Run:
 
     python tools/analyze_per_degree_study.py --results-dir ../polynomial_cl_demo/results/per_degree \\
         --out-json results/analysis/per_degree_analysis.json \\
@@ -45,11 +46,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import re
 import statistics
 import sys
 from pathlib import Path
+
+from polynomial_cl_bench import selection
 
 SCHEMA_VERSION = "1.0"
 CRITERIA = ("max_accuracy", "min_forgetting", "min_time", "best_tradeoff")
@@ -311,64 +313,28 @@ def view(candidate, basis):
     )
 
 
-def normalise(values, lower_is_better):
-    lo, hi = min(values), max(values)
-    span = (hi - lo) or 1.0
-    scaled = [(v - lo) / span for v in values]  # 0 = smallest, 1 = largest
-    return [s if lower_is_better else 1.0 - s for s in scaled]  # 0 = best, 1 = worst
-
-
-def dominates(a, b):
-    """a dominates b on (accuracy up, forgetting down, time down)."""
-    ge = a[0] >= b[0] and a[1] <= b[1] and a[2] <= b[2]
-    gt = a[0] > b[0] or a[1] < b[1] or a[2] < b[2]
-    return ge and gt
+def _as_candidates(pool, basis):
+    """The study's candidate dicts as ``selection.Candidate`` (ranking values of ``basis``)."""
+    out = []
+    for c in pool:
+        accuracy, forgetting, time_seconds, current = view(c, basis)
+        out.append(
+            selection.Candidate(c["id"], accuracy, forgetting, time_seconds, current)
+        )
+    return out
 
 
 def pareto_front(pool, basis):
-    front = []
-    for c in pool:
-        v = view(c, basis)[:3]
-        if not any(dominates(view(o, basis)[:3], v) for o in pool if o is not c):
-            front.append(c)
-    return front
-
-
-def tradeoff_scores(pool, basis, weights=(1.0, 1.0, 1.0)):
-    acc, forg, time_ = zip(*(view(c, basis)[:3] for c in pool))
-    badness = (
-        normalise(acc, lower_is_better=False),
-        normalise(forg, lower_is_better=True),
-        normalise(time_, lower_is_better=True),
-    )
-    scores = []
-    for i in range(len(pool)):
-        scores.append(
-            math.sqrt(sum(w * badness[k][i] ** 2 for k, w in enumerate(weights)))
-        )
-    return scores
+    by_id = {c["id"]: c for c in pool}
+    return [by_id[c.id] for c in selection.pareto_front(_as_candidates(pool, basis))]
 
 
 def pick(pool, basis, criterion, weights=(1.0, 1.0, 1.0)):
-    if criterion == "max_accuracy":
-        return min(
-            pool,
-            key=lambda c: (-view(c, basis)[0], view(c, basis)[1], view(c, basis)[2]),
-        )
-    if criterion == "min_forgetting":
-        return min(
-            pool,
-            key=lambda c: (view(c, basis)[1], -view(c, basis)[0], view(c, basis)[2]),
-        )
-    if criterion == "min_time":
-        return min(
-            pool,
-            key=lambda c: (view(c, basis)[2], -view(c, basis)[0], view(c, basis)[1]),
-        )
-    scores = tradeoff_scores(pool, basis, weights)
-    return pool[
-        min(range(len(pool)), key=lambda i: (scores[i], -view(pool[i], basis)[0]))
-    ]
+    """Winner under ``criterion``; the rules live in ``polynomial_cl_bench.selection``."""
+    chosen = selection.select(
+        _as_candidates(pool, basis), criterion, weights=weights
+    ).candidate_id
+    return next(c for c in pool if c["id"] == chosen)
 
 
 def describe(candidate, basis, criterion):

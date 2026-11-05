@@ -12,7 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
-from helpers import small_protocol, synthetic_dataset, unverified_core_provenance
+from helpers import small_protocol, synthetic_dataset
 
 from polynomial_cl_bench import tune, verify_data
 from polynomial_cl_bench.algorithms.base import AdapterError
@@ -158,12 +158,7 @@ class RunnerOnSyntheticData(unittest.TestCase):
         )
 
     def test_full_er_mlp_grid_runs_30_validation_runs_and_selects_one(self):
-        with mock.patch.object(
-            tune, "core_provenance", return_value=unverified_core_provenance()
-        ):
-            result = tune.run_tuning(
-                tune.load_grid(ER_GRID), self.protocol, self.dataset
-            )
+        result = tune.run_tuning(tune.load_grid(ER_GRID), self.protocol, self.dataset)
         self.assertEqual(
             (len(result.grid), len(result.runs), result.budget_runs), (15, 30, 30)
         )
@@ -177,7 +172,7 @@ class RunnerOnSyntheticData(unittest.TestCase):
         self.assertIn("commit", context["benchmark"])
         self.assertFalse(
             context["official_eligible"]
-        )  # the core provenance is forced to carry an official-run problem above
+        )  # no verified remote in this environment
         json.dumps(result.to_dict(), allow_nan=False)
 
     def test_approved_polynomial_grid_runs_through_the_same_runner(self):
@@ -210,9 +205,6 @@ class RunnerOnSyntheticData(unittest.TestCase):
     def test_official_mode_is_refused_before_any_training_here(self):
         spec = tune.load_grid(ER_GRID)
         with (
-            mock.patch.object(
-                tune, "core_provenance", return_value=unverified_core_provenance()
-            ),
             mock.patch.object(
                 tune, "build_factory", side_effect=AssertionError("trained")
             ),
@@ -279,9 +271,6 @@ class CommandLine(unittest.TestCase):
             tempfile.TemporaryDirectory() as tmp,
             mock.patch.object(
                 tune, "load_split_mnist", lambda protocol, data_dir: dataset
-            ),
-            mock.patch.object(
-                tune, "core_provenance", return_value=unverified_core_provenance()
             ),
         ):
             out = Path(tmp) / "r.json"

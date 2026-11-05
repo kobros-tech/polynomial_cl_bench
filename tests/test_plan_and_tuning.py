@@ -11,7 +11,7 @@ from unittest import mock
 
 import numpy as np
 from helpers import small_protocol, synthetic_dataset
-from polynomial_cl.continual import holdout_split, make_task_plan
+from polynomial_cl.class_incremental import holdout_split, make_task_plan
 
 from polynomial_cl_bench import tuning
 from polynomial_cl_bench.algorithms import er_mlp, polynomial
@@ -372,7 +372,15 @@ class Tuning(unittest.TestCase):
         )
         clean = tuning.tune("er_mlp", build, grid, self.dataset, self.protocol)
         dirty = tuning.tune("er_mlp", build, grid, poisoned, self.protocol)
-        self.assertEqual(clean.to_dict()["runs"], dirty.to_dict()["runs"])
+        # Everything except the measured times must be identical (times are never reproducible).
+        timing = ("wall_time_seconds", "cpu_time_seconds")
+        without_timing = lambda runs: [
+            {k: v for k, v in r.items() if k not in timing} for r in runs
+        ]
+        self.assertEqual(
+            without_timing(clean.to_dict()["runs"]),
+            without_timing(dirty.to_dict()["runs"]),
+        )
         self.assertTrue(all(r["status"] == "completed" for r in dirty.runs))
         self.assertEqual({r["evaluation_split"] for r in dirty.runs}, {"validation"})
 

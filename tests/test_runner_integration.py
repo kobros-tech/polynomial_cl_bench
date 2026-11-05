@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 
 try:
-    import polynomial_cl.continual  # noqa: F401
+    import polynomial_cl.class_incremental  # noqa: F401
 
     HAVE_CORE = True
 except ImportError:
@@ -162,7 +162,7 @@ class PolynomialThroughTheRunner(unittest.TestCase):
 
     def test_polynomial_reference_completes_and_agrees_with_the_core_report(self):
         try:
-            from polynomial_cl.continual import run_condition  # noqa: F401
+            from polynomial_cl.class_incremental import run_condition  # noqa: F401
         except ImportError:
             self.skipTest("core has no run_condition")
         from helpers import PROTOCOL_PATH, small_protocol

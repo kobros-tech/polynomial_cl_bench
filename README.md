@@ -11,17 +11,6 @@ protocol config, dataset verification/loading, adapter contract, polynomial adap
 shared experience/replay plan, validation tuning, official-run provenance rules. **Not implemented:**
 Codabench/OpenML integrations (Phase 4), reporting beyond a Markdown summary (Phase 5).
 
-**Update (PR 1, core integration).** The core dependency is now pinned to the full commit SHA
-`92f5fde15dfded952269ad1a2ac64715e0ed096f`, the tip of core PR #5 (`refactor`). This pin is
-**temporary**: PR #5 is not merged, and once it is, the pin moves to the SHA of the merge commit on
-the core's `main`. Verified in a clean virtual environment (`pip install -e ".[dev]"`, core fetched from
-GitHub at the pin): the fast suite passes (261 passed; the 3 skipped are the opt-in real-MNIST tests),
-including `tests/test_real_core_integration.py`, and the real-MNIST reference check
-(`BENCH_SLOW=1`) reproduces the core's committed seed-0 numbers exactly. The statements below that say the
-polynomial adapter "has never executed" through the runner or against the real core are **superseded for
-the synthetic case** (see "Testing and what each level establishes"); full-MNIST tuning and comparison
-runs were not repeated in PR 1.
-
 ## Layout
 
     configs/split_mnist_cil_v1.json            protocol (algorithm-independent)
@@ -136,9 +125,8 @@ Also inspected: `experiments/rate_selection.py` validates feature power x learni
 
 ## Running
 
-    pip install -e ".[dev]"                # installs the pinned core from Git, plus pytest, ruff, scipy
-    python3 -m pytest                                                       # fast suite (also: python3 -m unittest discover -s tests)
-    ruff check . && ruff format --check .                                   # lint (rules are explicit in pyproject.toml)
+    pip install -e .                       # installs the pinned core from Git
+    python3 -m unittest discover -s tests                                   # fast suite (also works with pytest)
     BENCH_SLOW=1 PYTHONPATH=tests python3 -m unittest test_full_split_mnist -v   # real data, ~45 s
 
 Place the four MNIST `.gz` archives in `data/mnist/` (git-ignored). The benchmark never downloads.
@@ -154,9 +142,9 @@ four match). The files are the standard MNIST archives under exactly these names
 
 ## Open items / limitations
 
-- The pinned commit exists on the GitHub remote (it is the head of core PR #5 and was fetched by
-  `pip` from `https://github.com/kobros-tech/polynomial_cl_demo.git` in the clean-install check). It is
-  not yet on the core's `main`; see the PR 1 update at the top.
+- The pinned commit has not been confirmed on the GitHub remote by this project (no network when
+  written). An official run now proves it per installation (see above); `git ls-remote` remains the
+  stronger check before releasing.
 - Test data and replay indices are handled inside the core; the adapter can only observe them.
 
 ## Phase 2 status (ER-MLP)
@@ -292,6 +280,40 @@ memory is `null` off Linux; the reproducibility check re-runs one seed per algor
 multi-threaded BLAS may report a mismatch: pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS`
 to 1 and repeat).
 
+## Model selection (four objectives)
+
+`selection.py` (standard library only, independent of the core and of every algorithm) ranks
+configurations by mean accuracy, mean forgetting and time. **Selection uses validation results only**;
+`report_from_tuning` refuses a tuning result whose evaluation split is not `validation`.
+
+| Objective | Rule (ties in order listed, then earlier candidate) |
+| --- | --- |
+| `max_accuracy` | highest accuracy, lower forgetting, lower time |
+| `min_forgetting` | lowest forgetting, higher accuracy, lower time |
+| `min_time` | smallest time, higher accuracy, lower forgetting |
+| `best_tradeoff` | smallest weighted distance to the ideal point after min-max normalisation (a **convention**, not a measurement; weights are recorded and the winner under other weightings is listed) |
+
+`min_forgetting`, `min_time` and `best_tradeoff` can be restricted by an **accuracy floor**: only candidates
+within `--accuracy-floor` (absolute, default 0.02) of the best accuracy take part. Without it, "lowest
+forgetting" and "fastest" are won by models that barely learn. Missing values are never zero: a failed
+configuration is excluded from every objective, a configuration without time from the time objectives, and
+each exclusion is listed with its reason.
+
+    python3 -m polynomial_cl_bench.selection --tuning results/tuning_er_mlp.json \
+        --time-basis wall --out-json results/selection_er_mlp.json --out-md results/selection_er_mlp.md
+
+Time per run (`wall_time_seconds`, `cpu_time_seconds`) is now recorded in tuning results, measured around
+`run_sequence` (includes in-loop evaluation; for the polynomial adapter also feature construction). Tuning
+files written before this change have no time: their time objectives are reported as unavailable. The
+existing tuning rule (`tuning.py`, accuracy within 0.005 of the best, then lowest forgetting) and the
+`selected_config` that experiments consume are unchanged. `tools/analyze_per_degree_study.py` now delegates
+to this module; its output on a fixed synthetic study is byte-identical to before (regression test).
+
+Status: unit-tested (`tests/test_selection.py`, `tests/test_configs.py`, 32 tests), including equivalence
+with the previous script logic on random pools and an end-to-end `tune()` -> report test with prescribed
+adapters. **Not done:** selection on real MNIST tuning results (none exist yet); an experiment spec cannot
+yet choose an objective other than the default tuning rule (it consumes `selected_config` only).
+
 ## Phase 5: analysis and paper
 
 Phase 5 consumes validated results only; it never trains anything except through the explicit
@@ -309,22 +331,6 @@ comparison driver.
         --comparison results/comparison --out paper
 
 Notes: the core's `main` was refactored (`class_incremental` -> `continual` + `data`); the
-benchmark's imports were updated accordingly (core untouched). The unit tests under `tests/` were ported
-to the new module paths in PR 1 and run. The ER-MLP grid used by
+benchmark's imports were updated accordingly (core untouched). The unit tests under `tests/` still
+import the old module path and have **not** been ported or re-run. The ER-MLP grid used by
 `run_comparison_study.py` is a superset of the approved `configs/er_mlp_grid.json`.
-
-## Testing and what each level establishes
-
-These are different claims; passing one does not imply the next.
-
-| Level | Command / where | Establishes | Does not establish |
-| --- | --- | --- | --- |
-| Unit | `python3 -m pytest` | Benchmark logic with fake adapters and synthetic data | Anything about the real core |
-| Real-core integration (synthetic) | `tests/test_real_core_integration.py` (in the fast suite) | The runner, worker subprocess, polynomial adapter and ER-MLP run against the installed `polynomial_cl`; shared plan; reproducibility repeat; experiment validation | That the installed core is the declared pin; anything about real MNIST |
-| Clean install from the pin | CI sets `BENCH_REQUIRE_CORE=1` and `BENCH_REQUIRE_PINNED_CORE=1` after a fresh `pip install` | The installed core commit equals the SHA in `pyproject.toml`, came from a pip VCS install and is remote-verified | Anything about results |
-| Real data (opt-in) | `BENCH_SLOW=1 PYTHONPATH=tests python3 -m unittest test_full_split_mnist -v`, MNIST in `data/mnist/` | Reproduces the core's committed seed-0 and seed-3 numbers on full Split MNIST | Independent reproduction; not run in CI (needs the archives) |
-| Independent reproducibility | Not done | n/a | A third party re-running the study |
-
-`BENCH_REQUIRE_CORE=1` turns the "core not installed" skips into a failure. Without it, integration
-tests skip silently when the core cannot be imported, which is how the stale imports went unnoticed
-before PR 1.

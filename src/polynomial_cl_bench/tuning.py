@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -144,14 +145,21 @@ def tune(
     for index, entry in enumerate(grid):
         for seed in selection_seeds:
             base = {"config_index": index, "seed": seed, "config": entry}
+            wall_start, cpu_start = time.perf_counter(), time.process_time()
             try:
                 result = factory(entry).run_sequence(view, protocol, seed, plans[seed])
+                # Same definition as the runner's figures: includes in-loop evaluation and,
+                # for the polynomial adapter, feature construction; excludes plan building.
+                wall = time.perf_counter() - wall_start
+                cpu = time.process_time() - cpu_start
                 matrix = metrics.validate_matrix(result.accuracy_matrix)
                 runs.append(
                     base
                     | {
                         "status": "completed",
                         "error": None,
+                        "wall_time_seconds": wall,
+                        "cpu_time_seconds": cpu,
                         "final_mean_accuracy": metrics.final_mean_accuracy(matrix),
                         "mean_forgetting": metrics.mean_forgetting(matrix),
                         "accuracy_matrix": [
@@ -171,6 +179,8 @@ def tune(
                     | {
                         "status": _status_for(error),
                         "error": f"{type(error).__name__}: {error}",
+                        "wall_time_seconds": None,
+                        "cpu_time_seconds": None,
                         "final_mean_accuracy": None,
                         "mean_forgetting": None,
                         "accuracy_matrix": None,

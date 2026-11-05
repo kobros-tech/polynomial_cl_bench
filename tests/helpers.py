@@ -19,19 +19,6 @@ PER_DEGREE_CONFIG_PATH = (
 )
 
 
-def unverified_core_provenance() -> dict:
-    """Core provenance as recorded, forced to carry an official-run problem.
-
-    Tests of the official-mode gate must state their own premise instead of inheriting the
-    machine's: on a clean checkout with the core installed from the pin, the real gate passes.
-    """
-    from polynomial_cl_bench import provenance
-
-    core = provenance.core_provenance()
-    problems = [*core["official_problems"], "forced by test: remote not verified"]
-    return {**core, "official_problems": problems}
-
-
 def shipped_protocol() -> Protocol:
     return Protocol.from_file(PROTOCOL_PATH)
 

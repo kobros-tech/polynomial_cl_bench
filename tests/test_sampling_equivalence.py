@@ -6,7 +6,7 @@ proportions: same batches, same leftover-slot choices, same cycles, same update 
 
 Four independent angles, so a failure points at the cause:
 
-1. draw-for-draw equality with the core's public ``continual.sampling.balanced_batches``;
+1. draw-for-draw equality with the core's private batcher (private import is confined to tests);
 2. the same batches captured from inside a real, public ``fit_task`` call;
 3. an end-to-end check: a bias-free linear model trained by the benchmark's trainer must
    reproduce ``fit_task``'s weights, for both policies and across experiences;
@@ -14,12 +14,12 @@ Four independent angles, so a failure points at the cause:
 """
 
 import unittest
+from unittest import mock
 
 import numpy as np
-import polynomial_cl.training.multiclass as core_training
+import polynomial_cl.class_incremental.training as core_training
 from helpers import small_protocol, synthetic_dataset
-from polynomial_cl.continual import make_feature_data, run_condition
-from polynomial_cl.continual.sampling import balanced_batches, epoch_sampler
+from polynomial_cl.class_incremental import make_feature_data, run_condition
 
 from polynomial_cl_bench import sampling
 from polynomial_cl_bench.algorithms.er_mlp import (
@@ -47,7 +47,7 @@ CASES = [
 ]
 
 
-class AgainstCoreBatcher(unittest.TestCase):
+class AgainstCorePrivateBatcher(unittest.TestCase):
     def test_every_batch_and_the_generator_state_equal_the_cores(self):
         for name, counts, batch_size, n_updates in CASES:
             for seed in (0, 1, 123):
@@ -62,7 +62,11 @@ class AgainstCoreBatcher(unittest.TestCase):
                             labels, n_updates, batch_size, rng_a
                         )
                     )
-                    core = list(balanced_batches(labels, n_updates, batch_size, rng_b))
+                    core = list(
+                        core_training._balanced_batches(
+                            labels, n_updates, batch_size, rng_b
+                        )
+                    )
                     self.assertEqual(len(mine), len(core))
                     for a, b in zip(mine, core):
                         np.testing.assert_array_equal(a, b)
@@ -171,29 +175,28 @@ class CapturedFromRealFitTask(unittest.TestCase):
         x = np.asarray(dataset.train_x, dtype=np.float64)
         y = np.asarray(dataset.train_y).astype(np.int64)
         recorded, stats = [], {}
-        real = epoch_sampler(sampling_policy)
+        real = core_training._balanced_batches
 
         def spy(*args, **kwargs):
             for batch in real(*args, **kwargs):
                 recorded.append(batch.copy())
                 yield batch
 
-        # The refactored core takes the sampler as an argument, so no patching is needed.
-        # ``shuffled`` is the trainer's own loop (sampler None): nothing is recorded for it.
-        core_training.fit_task(
-            np.zeros((16, 10)),
-            x[current],
-            y[current],
-            x[replay],
-            y[replay],
-            epochs=3,
-            learning_rate=0.05,
-            batch_size=32,
-            seed=3 + task,
-            eligible_classes=seen,
-            epoch_sampler=None if real is None else spy,
-            stats=stats,
-        )
+        with mock.patch.object(core_training, "_balanced_batches", spy):
+            core_training.fit_task(
+                np.zeros((16, 10)),
+                x[current],
+                y[current],
+                x[replay],
+                y[replay],
+                epochs=3,
+                learning_rate=0.05,
+                batch_size=32,
+                seed=3 + task,
+                eligible_classes=seen,
+                sampling=sampling_policy,
+                stats=stats,
+            )
         labels = np.concatenate([y[current], y[replay]])
         return labels, recorded, stats
 
@@ -236,6 +239,7 @@ class LinearModelReproducesFitTask(unittest.TestCase):
                         "batch_size": 24,
                         "seed": 2 + task,
                         "eligible_classes": seen,
+                        "sampling": policy,
                     }
                     core_stats, my_stats = {}, {}
                     core_training.fit_task(
@@ -246,7 +250,6 @@ class LinearModelReproducesFitTask(unittest.TestCase):
                         y[rep],
                         learning_rate=0.1,
                         stats=core_stats,
-                        epoch_sampler=epoch_sampler(policy),
                         **kwargs,
                     )
                     train_experience(
@@ -257,7 +260,6 @@ class LinearModelReproducesFitTask(unittest.TestCase):
                         y[rep],
                         learning_rate=0.1,
                         stats=my_stats,
-                        sampling=policy,
                         **kwargs,
                     )
                     np.testing.assert_allclose(
