@@ -79,8 +79,8 @@ def load_split_mnist(protocol: Protocol, data_dir) -> SplitMNIST:
     network and never uses an unverified file. The archives are hashed before loading and again
     after it, so a file replaced between verification and reading is detected.
     """
-    from polynomial_cl.class_incremental import load_projected_mnist
-    from polynomial_cl.class_incremental.data import N_COMPONENTS
+    from polynomial_cl.data import load_projected_mnist
+    from polynomial_cl.data.mnist import N_COMPONENTS
 
     if protocol.n_components != N_COMPONENTS:
         raise DatasetVerificationError(
@@ -113,7 +113,7 @@ def validation_view(dataset: SplitMNIST, protocol: Protocol) -> SplitMNIST:
     slots so that any adapter evaluates on it unchanged, and it does not reference the real
     test arrays at all: selection cannot reach them.
     """
-    from polynomial_cl.class_incremental import holdout_split
+    from polynomial_cl.continual import holdout_split
 
     if dataset.evaluation_split != "test":
         raise DatasetVerificationError(

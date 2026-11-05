@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from polynomial_cl.class_incremental import TASK_ORDER, make_task_plan
+from polynomial_cl.continual import TASK_ORDER, make_task_plan
 
 from .algorithms.base import AdapterError
 from .datasets import SplitMNIST, array_fingerprint

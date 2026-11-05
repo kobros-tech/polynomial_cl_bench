@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from polynomial_cl.class_incremental import TASK_ORDER
+from polynomial_cl.continual import TASK_ORDER
 
 from ..datasets import SplitMNIST
 from ..plan import check_inputs, resolve_plan

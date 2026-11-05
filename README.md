@@ -279,3 +279,24 @@ Known limits: per-class accuracy and a separate polynomial training/inference ti
 memory is `null` off Linux; the reproducibility check re-runs one seed per algorithm (exact equality, so
 multi-threaded BLAS may report a mismatch: pin `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS`
 to 1 and repeat).
+
+## Phase 5: analysis and paper
+
+Phase 5 consumes validated results only; it never trains anything except through the explicit
+comparison driver.
+
+    # 1. best settings by criterion from the core's per-degree study (stdlib only)
+    python tools/analyze_per_degree_study.py --results-dir <core>/results/per_degree \
+        --out-json results/analysis/per_degree_analysis.json \
+        --out-md results/analysis/per_degree_analysis.md --out-csv results/analysis/per_degree_candidates.csv
+    # 2. re-run those settings and the ER-MLP under one protocol/machine (resumable)
+    python tools/run_comparison_study.py --analysis results/analysis/per_degree_analysis.json \
+        --core-results <core>/results/per_degree --out-dir results/comparison
+    # 3. tables, figures and number macros for the paper, then compile paper/main.tex
+    python tools/build_paper_assets.py --analysis results/analysis/per_degree_analysis.json \
+        --comparison results/comparison --out paper
+
+Notes: the core's `main` was refactored (`class_incremental` -> `continual` + `data`); the
+benchmark's imports were updated accordingly (core untouched). The unit tests under `tests/` still
+import the old module path and have **not** been ported or re-run. The ER-MLP grid used by
+`run_comparison_study.py` is a superset of the approved `configs/er_mlp_grid.json`.

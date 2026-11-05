@@ -1,0 +1,24 @@
+\begin{tabular}{@{}llllrrrrr@{}}
+\toprule
+Criterion & Update rule & Sampling & $\eta$ (degrees 0--3) & Acc.\ (\%) & Forg.\ (\%) & Newest (\%) & $t_{\rm log}$ (s) & $t_{\rm here}$ (s) \\
+\midrule
+\multicolumn{9}{@{}l}{\emph{Ranked on validation (selection seeds 0--2); test seeds 3--9 reported}}\\
+Highest accuracy & \texttt{frozen\_old} & \texttt{class\_balanced} & [2.5, 2.5, 10, 10] & 77.8{\scriptsize$\pm$0.4} & 10.5{\scriptsize$\pm$1.1} & 72.2 & 5.00 & 0.79 \\
+Lowest forgetting & \texttt{strategy\_b} & \texttt{class\_balanced} & [3, 3, 0.75, 3] & 75.9{\scriptsize$\pm$0.2} & 8.5{\scriptsize$\pm$0.5} & 65.6 & 7.26 & 2.29 \\
+Smallest time & \texttt{ordinary\_no\_replay} & \texttt{shuffled} & [0.01, 0.01, 0.01, 0.01] & 22.1{\scriptsize$\pm$0.0} & 86.9{\scriptsize$\pm$0.0} & 86.9 & 3.06 & 0.71 \\
+Best trade-off & \texttt{ordinary} & \texttt{class\_balanced} & [3, 3, 3, 3] & 76.9{\scriptsize$\pm$0.3} & 9.7{\scriptsize$\pm$0.8} & 70.6 & 3.53 & 0.91 \\
+Lowest forgetting (floor) & \texttt{strategy\_b} & \texttt{class\_balanced} & [12, 0.75, 0.75, 6] & 76.9{\scriptsize$\pm$0.3} & 9.0{\scriptsize$\pm$0.8} & 69.3 & 7.20 & 2.50 \\
+Smallest time (floor) & \texttt{ordinary} & \texttt{class\_balanced} & [3, 3, 3, 3] & 76.9{\scriptsize$\pm$0.3} & 9.7{\scriptsize$\pm$0.8} & 70.6 & 3.53 & 0.91 \\
+Best trade-off (floor) & \texttt{frozen\_old} & \texttt{class\_balanced} & [2.5, 2.5, 10, 10] & 77.8{\scriptsize$\pm$0.4} & 10.5{\scriptsize$\pm$1.1} & 72.2 & 5.00 & 0.79 \\
+\midrule
+\multicolumn{9}{@{}l}{\emph{Ranked on the test seeds themselves (hindsight; optimistic)}}\\
+Highest accuracy (10 ep.) & \texttt{frozen\_old} & \texttt{class\_balanced} & [2.5, 2.5, 10, 10] & 78.6{\scriptsize$\pm$0.5} & 11.9{\scriptsize$\pm$1.1} & 75.6 & 6.96 & 1.57 \\
+Lowest forgetting & \texttt{strategy\_b} & \texttt{class\_balanced} & [3, 3, 0.75, 3] & 75.9{\scriptsize$\pm$0.2} & 8.5{\scriptsize$\pm$0.5} & 65.6 & 7.26 & 2.29 \\
+Smallest time & \texttt{ordinary\_no\_replay} & \texttt{shuffled} & [0.04, 0.01, 0.01, 0.01] & 17.9{\scriptsize$\pm$0.1} & 91.2{\scriptsize$\pm$0.0} & 86.6 & 3.00 & 0.71 \\
+Best trade-off & \texttt{ordinary} & \texttt{class\_balanced} & [3, 3, 6, 3] & 77.2{\scriptsize$\pm$0.4} & 10.1{\scriptsize$\pm$0.9} & 71.3 & 3.50 & 0.84 \\
+Lowest forgetting (floor) & \texttt{strategy\_b} & \texttt{class\_balanced} & [12, 0.75, 0.75, 6] & 76.9{\scriptsize$\pm$0.3} & 9.0{\scriptsize$\pm$0.8} & 69.3 & 7.20 & 2.50 \\
+Smallest time (floor) & \texttt{ordinary} & \texttt{class\_balanced} & [3, 3, 6, 3] & 77.2{\scriptsize$\pm$0.4} & 10.1{\scriptsize$\pm$0.9} & 71.3 & 3.50 & 0.84 \\
+Best trade-off (floor) & \texttt{small\_old\_lr} & \texttt{class\_balanced} & [10, 2.5, 10, 10] & 78.1{\scriptsize$\pm$0.3} & 10.3{\scriptsize$\pm$1.1} & 72.8 & 3.64 & 0.81 \\
+
+\bottomrule
+\end{tabular}

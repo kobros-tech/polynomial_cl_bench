@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Mohamed Alkobrosli
 # SPDX-License-Identifier: MIT
 
-"""Mini-batch construction identical to the core's ``polynomial_cl.class_incremental.training``.
+"""Mini-batch construction identical to the core's ``polynomial_cl.continual (fit_task, sampling)``.
 
 The core exposes batching only inside ``fit_task`` (``_balanced_batches`` is private), so a
 competitor that trains a different model cannot call it. This module reproduces the two

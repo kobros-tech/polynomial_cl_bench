@@ -1,0 +1,26 @@
+\begin{tabular}{@{}llrrrrlrrrr@{}}
+\toprule
+ & & \multicolumn{3}{c}{Shared rate $\eta$} & & \multicolumn{4}{c}{Per-degree vector (validation-selected)} & \\
+\cmidrule(lr){3-5}\cmidrule(lr){7-10}
+Update rule & Sampling & $\eta$ & Acc.\ (\%) & Forg.\ (\%) & & $\eta$ (deg.\ 0--3) & Acc.\ (\%) & Forg.\ (\%) & $t$ (s) \\
+\midrule
+\texttt{ordinary} & \texttt{class\_balanced} & 3 & 76.9{\scriptsize$\pm$0.3} & 9.7{\scriptsize$\pm$0.8} & & [0.75, 1.5, 1.5, 6] & 77.3{\scriptsize$\pm$0.3} & 9.6{\scriptsize$\pm$0.8} & 0.79 \\
+\texttt{ordinary} & \texttt{shuffled} & 30 & 56.8{\scriptsize$\pm$7.2} & 43.7{\scriptsize$\pm$8.8} & & [30, 30, 30, 120] & 62.6{\scriptsize$\pm$8.1} & 37.4{\scriptsize$\pm$11.0} & 0.87 \\
+\addlinespace[2pt]
+\texttt{ordinary\_no\_replay} & \texttt{class\_balanced} & 0.01 & 22.1{\scriptsize$\pm$0.0} & 86.5{\scriptsize$\pm$0.0} & & [0.0025, 0.01, 0.02, 0.04] & 25.6{\scriptsize$\pm$0.0} & 82.4{\scriptsize$\pm$0.0} & 0.76 \\
+\texttt{ordinary\_no\_replay} & \texttt{shuffled} & 0.01 & 22.1{\scriptsize$\pm$0.0} & 86.9{\scriptsize$\pm$0.0} & & [0.0025, 0.0025, 0.01, 0.04] & 26.4{\scriptsize$\pm$0.0} & 81.5{\scriptsize$\pm$0.0} & 0.72 \\
+\addlinespace[2pt]
+\texttt{small\_old\_lr} & \texttt{class\_balanced} & 10 & 78.0{\scriptsize$\pm$0.4} & 10.5{\scriptsize$\pm$1.3} & & [20, 10, 10, 10] & 77.8{\scriptsize$\pm$0.5} & 10.1{\scriptsize$\pm$2.0} & 0.87 \\
+\texttt{small\_old\_lr} & \texttt{shuffled} & 10 & 54.8{\scriptsize$\pm$5.0} & 48.7{\scriptsize$\pm$6.1} & & [2.5, 40, 20, 40] & 58.5{\scriptsize$\pm$6.5} & 42.9{\scriptsize$\pm$7.3} & 0.74 \\
+\addlinespace[2pt]
+\texttt{frozen\_old} & \texttt{class\_balanced} & 10 & 77.6{\scriptsize$\pm$0.5} & 10.8{\scriptsize$\pm$1.5} & & [2.5, 2.5, 10, 10] & 77.8{\scriptsize$\pm$0.4} & 10.5{\scriptsize$\pm$1.1} & 0.79 \\
+\texttt{frozen\_old} & \texttt{shuffled} & 30 & 46.2{\scriptsize$\pm$7.1} & 55.7{\scriptsize$\pm$8.0} & & [15, 30, 30, 30] & 47.6{\scriptsize$\pm$6.3} & 55.1{\scriptsize$\pm$6.3} & 0.76 \\
+\addlinespace[2pt]
+\texttt{strategy\_b} & \texttt{class\_balanced} & 3 & 76.4{\scriptsize$\pm$0.2} & 9.4{\scriptsize$\pm$0.7} & & [12, 0.75, 0.75, 6] & 76.9{\scriptsize$\pm$0.3} & 9.0{\scriptsize$\pm$0.8} & 2.50 \\
+\texttt{strategy\_b} & \texttt{shuffled} & 30 & 64.8{\scriptsize$\pm$0.8} & 37.1{\scriptsize$\pm$1.3} & & [120, 120, 120, 60] & 65.3{\scriptsize$\pm$1.0} & 32.7{\scriptsize$\pm$2.1} & 2.47 \\
+\addlinespace[2pt]
+\texttt{strategy\_b\_new} & \texttt{class\_balanced} & 10 & 77.1{\scriptsize$\pm$0.2} & 10.3{\scriptsize$\pm$0.7} & & [5, 5, 2.5, 10] & 76.7{\scriptsize$\pm$0.3} & 9.8{\scriptsize$\pm$0.7} & 2.65 \\
+\texttt{strategy\_b\_new} & \texttt{shuffled} & 0.03 & 53.5{\scriptsize$\pm$2.0} & 28.7{\scriptsize$\pm$2.3} & & [0.12, 0.12, 0.03, 0.0075] & 50.5{\scriptsize$\pm$3.3} & 16.7{\scriptsize$\pm$1.7} & 2.54 \\
+\addlinespace[2pt]
+\bottomrule
+\end{tabular}

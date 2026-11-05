@@ -19,12 +19,13 @@ import time
 from pathlib import Path
 
 import numpy as np
-from polynomial_cl.class_incremental import (
+from polynomial_cl.continual import (
+    CONDITIONS,
+    STRATEGIES,
     make_feature_data,
     run_condition,
 )
-from polynomial_cl.class_incremental.experiment import CONDITIONS, STRATEGIES
-from polynomial_cl.class_incremental.training import SAMPLING_POLICIES
+from polynomial_cl.continual.sampling import SAMPLING_POLICIES
 
 from ..datasets import SplitMNIST
 from ..plan import check_inputs, resolve_plan

@@ -1,0 +1,10 @@
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+Method & Configuration & Acc.\ 3 ep. & Acc.\ 10 ep. & Forg.\ 3 ep. & Forg.\ 10 ep. & Time 3 ep. & Time 10 ep. \\
+\midrule
+Polynomial & \texttt{frozen\_old}, $\eta=[2.5, 2.5, 10, 10]$ & 77.8{\scriptsize$\pm$0.4} & 78.6{\scriptsize$\pm$0.5} & 10.5{\scriptsize$\pm$1.1} & 11.9{\scriptsize$\pm$1.1} & 0.79 & 1.57 \\
+ER-MLP & $H=512$, $\eta=1$ & 75.7{\scriptsize$\pm$1.1} & 74.2{\scriptsize$\pm$1.3} & 17.0{\scriptsize$\pm$2.2} & 23.0{\scriptsize$\pm$2.0} & 0.71 & 2.01 \\
+ER-MLP & $H=512$, $\eta=0.3$ & 76.0{\scriptsize$\pm$0.9} & 76.0{\scriptsize$\pm$0.7} & 13.2{\scriptsize$\pm$1.9} & 17.6{\scriptsize$\pm$1.2} & 0.59 & 1.94 \\
+ER-MLP & $H=256$, $\eta=0.3$ & 75.7{\scriptsize$\pm$0.5} & 75.6{\scriptsize$\pm$0.6} & 12.4{\scriptsize$\pm$1.4} & 16.8{\scriptsize$\pm$1.2} & 0.29 & 1.05 \\
+\bottomrule
+\end{tabular}
