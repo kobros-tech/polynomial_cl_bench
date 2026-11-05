@@ -485,9 +485,11 @@ def markdown(analysis, candidates, results_dir):
     lines = [
         "# Per-degree study: best settings by criterion",
         "",
-        f"Source: `{results_dir}`. Accuracy and forgetting are percentages (mean ± std over the test seeds); "
-        "time is mean wall-clock seconds per complete run (5 experiences + evaluation) from the study logs, "
-        "on the machine that produced them. `lr` is the learning rate per polynomial degree group (degrees 0-3).",
+        (
+            f"Source: `{results_dir}`. Accuracy and forgetting are percentages (mean ± std over the test seeds); "
+            "time is mean wall-clock seconds per complete run (5 experiences + evaluation) from the study logs, "
+            "on the machine that produced them. `lr` is the learning rate per polynomial degree group (degrees 0-3)."
+        ),
         "",
     ]
     notes = {
@@ -504,8 +506,10 @@ def markdown(analysis, candidates, results_dir):
             f"## Ranking basis: {basis}",
             "",
             notes[basis],
-            f"{block['n_candidates']} candidates; {block['distinct_winners']} distinct winners across the "
-            f"four criteria; {len(block['pareto_front_ids'])} on the Pareto front.",
+            (
+                f"{block['n_candidates']} candidates; {block['distinct_winners']} distinct winners across the "
+                f"four criteria; {len(block['pareto_front_ids'])} on the Pareto front."
+            ),
             "",
             *TABLE_HEAD,
         ]
@@ -514,9 +518,11 @@ def markdown(analysis, candidates, results_dir):
         floor = block["accuracy_floor"]
         lines += [
             "",
-            f"Same criteria restricted to candidates within the accuracy floor ({floor['definition']}; "
-            f"{floor['n_candidates']} candidates), which removes winners that are cheap or stable only "
-            "because they learn little:",
+            (
+                f"Same criteria restricted to candidates within the accuracy floor ({floor['definition']}; "
+                f"{floor['n_candidates']} candidates), which removes winners that are cheap or stable only "
+                "because they learn little:"
+            ),
             "",
             *TABLE_HEAD,
         ]
@@ -532,9 +538,11 @@ def markdown(analysis, candidates, results_dir):
             "",
         ]
     lines += [
-        "Trade-off definition: Euclidean distance to the ideal point after min-max normalising "
-        "accuracy (up), forgetting (down) and time (down) over the candidate pool. Changing the weights or "
-        "the pool can change the winner (see the sensitivity line); it is a convention, not a measurement.",
+        (
+            "Trade-off definition: Euclidean distance to the ideal point after min-max normalising "
+            "accuracy (up), forgetting (down) and time (down) over the candidate pool. Changing the weights or "
+            "the pool can change the winner (see the sensitivity line); it is a convention, not a measurement."
+        ),
         "",
         f"Candidates analysed: {len(candidates)}.",
     ]

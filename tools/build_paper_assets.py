@@ -196,7 +196,6 @@ def main(argv=None):
     out_fig.mkdir(parents=True, exist_ok=True)
     M = Macros()
     cands = report["candidates"]
-    cand_by_id = {c["id"]: c for c in cands}
     er_cands = {c["id"]: c for c in summary["er_candidates"]}
 
     # ---- polynomial rows re-timed here, keyed by (strategy, sampling, lr, epochs)
@@ -628,7 +627,6 @@ def main(argv=None):
     M.add("numPerDegreeGainCbMax", f"{100 * max(cb_gain):+.1f}")
 
     # =============================================================== epochs 3 vs 10
-    ten = summary["ten_epoch_and_ablation_runs"]
     lines = [
         r"\begin{tabular}{@{}llrrrrrr@{}}",
         r"\toprule",
