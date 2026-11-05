@@ -9,17 +9,37 @@ description = "Independent benchmark environment for continual-learning algorith
 requires-python = ">=3.9"
 dependencies = [
     "numpy",
-    # Pinned upstream commit. Verify it exists on the remote before releasing:
-    #   git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git
-    #   (or clone and run: git branch -r --contains 9e1573238a1c1e21d63a196daee0ec1ca9037d16)
-    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@9e1573238a1c1e21d63a196daee0ec1ca9037d16",
+    # Pinned to an immutable full commit SHA, never a branch name.
+    # TEMPORARY: 92f5fde is the tip of core PR #5 (branch `refactor`), which this package already
+    # targets (`polynomial_cl.continual` / `polynomial_cl.data`). It is NOT on the core's `main`
+    # yet (main is still 9e15732, which lacks that API). When PR #5 is merged, replace this SHA with
+    # the SHA of the merge commit on `main`, and keep the URL below identical (provenance compares it).
+    # Check the pin exists on the remote:  git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git
+    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@92f5fde15dfded952269ad1a2ac64715e0ed096f",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "ruff", "scipy"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Explicit on purpose: recent Ruff versions enable only the F rules by default, which would make
+# "ruff passes" a much weaker statement than the pre-commit hook suggests.
+# BLE: a blind `except Exception` is allowed only where the code records the failure and carries
+# `# noqa: BLE001 - <why>` (runner, worker, tuning).
+select = ["F", "E4", "E7", "E9", "BLE"]
+# Pre-existing style, not changed here: `l` as a loop variable and lambda assignments.
+ignore = ["E731", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path is extended before the package imports in scripts, and a helper block sits mid-file.
+"tools/*.py" = ["E402"]
+"tests/helpers.py" = ["E402"]

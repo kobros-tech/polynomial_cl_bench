@@ -85,14 +85,14 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(set(files.values())), 4)
 
     def test_protocol_names_are_exactly_the_files_the_core_loader_reads(self):
-        from polynomial_cl.class_incremental import mnist
+        from polynomial_cl.data import mnist
 
         self.assertEqual(
             set(shipped_protocol().dataset["files"]), set(mnist.FILES.values())
         )
 
     def test_every_file_the_core_reads_was_hashed_against_the_protocol(self):
-        from polynomial_cl.class_incremental import mnist
+        from polynomial_cl.data import mnist
 
         reads = []
         real = mnist.read_idx
@@ -116,7 +116,7 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(digest, self.protocol.dataset["files"][name])
 
     def test_file_replaced_while_loading_is_detected(self):
-        from polynomial_cl.class_incremental import mnist
+        from polynomial_cl.data import mnist
 
         real = mnist.read_idx
         state = {"done": False}

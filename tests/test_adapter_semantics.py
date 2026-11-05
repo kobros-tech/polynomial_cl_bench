@@ -19,8 +19,9 @@ from helpers import (
     small_protocol,
     synthetic_dataset,
 )
-from polynomial_cl.class_incremental import TASK_ORDER, experiment
-from polynomial_cl.class_incremental.features import scaled_polynomial_features
+from polynomial_cl.continual import TASK_ORDER, experiment
+from polynomial_cl.continual.features import scaled_polynomial_features
+from polynomial_cl.continual.sampling import balanced_batches
 
 from polynomial_cl_bench import provenance as prov
 from polynomial_cl_bench.algorithms import polynomial as module
@@ -49,11 +50,12 @@ class EvaluationSemantics(unittest.TestCase):
 
         real_eval, real_fit = experiment.accuracy_by_task, experiment.fit_task
 
-        def eval_spy(weights, test_x, test_y, n_seen):
+        def eval_spy(weights, test_x, test_y, n_seen, **kw):
+            # The refactored core passes ``by_class`` (an output buffer); forward it unchanged.
             cls.eval_calls.append(
                 (weights.copy(), np.array(test_x), np.array(test_y), n_seen)
             )
-            return real_eval(weights, test_x, test_y, n_seen)
+            return real_eval(weights, test_x, test_y, n_seen, **kw)
 
         def fit_spy(weights, features, labels, replay_features, replay_labels, **kw):
             cls.fit_calls.append((np.array(labels), np.array(replay_labels), kw))
@@ -112,7 +114,8 @@ class EvaluationSemantics(unittest.TestCase):
             self.assertEqual(
                 sorted(kw["eligible_classes"].tolist()), sorted(current | old)
             )
-            self.assertEqual(kw["sampling"], "class_balanced")
+            # The refactored core receives the policy as a sampler callable, not a name.
+            self.assertIs(kw["epoch_sampler"], balanced_batches)
 
 
 class CoreMaskingRule(unittest.TestCase):

@@ -11,7 +11,7 @@ from unittest import mock
 
 import numpy as np
 from helpers import small_protocol, synthetic_dataset
-from polynomial_cl.class_incremental import holdout_split, make_task_plan
+from polynomial_cl.continual import holdout_split, make_task_plan
 
 from polynomial_cl_bench import tuning
 from polynomial_cl_bench.algorithms import er_mlp, polynomial
