@@ -123,9 +123,12 @@ CI builds all three with warnings as errors.
 
 ## Research paper
 
-`paper/main.tex` is a **draft** LaTeX manuscript with generated tables. It has not been validated
-against executed benchmark output, and its raw results are not in this repository; do not treat it
-as verified. Migration to Sphinx/reStructuredText and claim-by-claim validation are pending.
+`paper/index.rst` is the canonical source of a **draft** manuscript (reStructuredText, built with
+Sphinx; HTML, PDF and Word versions). Its tables and numbers come from generated assets, and
+`tests/test_paper.py` checks that the migration from the earlier LaTeX (`paper/main.tex`, kept as
+the reference) lost nothing. It has not been validated against executed benchmark output, and its
+raw results are not in this repository; do not treat it as verified. Claim-by-claim validation is
+pending. Build: `python tools/build_paper.py`; details in `paper/README.rst`.
 
 ## Status
 

@@ -220,3 +220,9 @@ __marimo__/
 .streamlit/secrets.toml
 data/
 results/
+
+# Paper build products and assets derived from committed sources (tools/paper_rst_assets.py)
+paper/_build/
+paper/generated_rst/
+paper/figures/*.svg
+paper/figures/*.png

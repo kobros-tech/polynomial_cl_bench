@@ -63,6 +63,10 @@ Building the documentation
 The build is hermetic: it does not fetch anything from the network (no intersphinx). The
 ``docs`` extra installs the core too, because the API pages import the modules.
 
+The research paper is a separate Sphinx project in ``paper/`` and is built with
+``python tools/build_paper.py`` (HTML, PDF and Word; see ``paper/README.rst`` for the tools it
+needs).
+
 Documentation rules for contributors:
 
 * Describe what the code does now, and state how far it has been verified. Do not describe

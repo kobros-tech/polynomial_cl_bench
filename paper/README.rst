@@ -1,0 +1,137 @@
+The research paper
+==================
+
+``index.rst`` is the **canonical source** of the manuscript. HTML, PDF and Word versions are
+built from it (and from the generated assets); none of them is edited by hand, and none is
+converted from another output.
+
+.. warning::
+
+   The manuscript is the original **draft**, migrated in format only. It has not been validated:
+   its numbers have not been regenerated from, or audited against, executed benchmark output
+   (that is a separate piece of work, "PR 5"). Do not cite it as a source of verified results.
+
+Build
+-----
+
+.. code-block:: bash
+
+   pip install -e ".[docs]"
+   python tools/build_paper.py            # assets, html, pdf, docx
+   python tools/build_paper.py html       # or: assets | latex | pdf | docx
+
+Outputs go to ``paper/_build/`` (not versioned): ``html/index.html``, ``latex/paper.pdf``,
+``docx/paper.docx``. Needs Sphinx and Furo (the ``docs`` extra), ``pdftocairo`` (poppler),
+and for PDF a TeX distribution with ``latexmk``, and for Word ``pandoc`` (3.1 or newer).
+Sphinx runs with ``-W``, so an unresolved citation, cross-reference or figure fails the build.
+
+Layout
+------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Path
+     - Role
+   * - ``index.rst``
+     - Hand-written manuscript text. Contains **no** generated number or table cell.
+   * - ``generated/*.tex``
+     - Tables and number macros written by ``tools/build_paper_assets.py`` (the existing
+       analysis pipeline). Committed because the raw results they come from are not.
+   * - ``figures/*.pdf``
+     - Figures written by the same tool.
+   * - ``generated_rst/``
+     - *Derived, not versioned.* ``numbers.rst`` (one ``|substitution|`` per number macro)
+       and ``table_*.rst`` (grid tables), produced mechanically from ``generated/*.tex`` by
+       ``tools/paper_rst_assets.py``.
+   * - ``figures/*.svg``, ``figures/*.png``
+     - *Derived, not versioned.* ``pdftocairo`` renderings of the PDF figures: SVG for HTML,
+       PNG for Word. LaTeX uses the PDF.
+   * - ``conf.py``
+     - Sphinx configuration; derives the assets before every build.
+   * - ``main.tex``, ``main.pdf``
+     - The previous LaTeX manuscript, **kept unchanged** as the reference against which the
+       migration is tested (``tests/test_paper.py``). Remove them together with those tests
+       once the validated paper supersedes the draft.
+
+Numbers and tables in the text come only from the generated assets: ``|numPolyBestAcc|`` is a
+substitution defined in ``generated_rst/numbers.rst``; a table is a
+``.. include:: generated_rst/table_*.rst`` inside a hand-written ``.. table::`` caption.
+The converter is strict: LaTeX it does not know is an error, not silently dropped.
+
+What the migration guarantees, and how it is tested
+---------------------------------------------------
+
+``tests/test_paper.py`` (40 tests; the build tests skip when Sphinx, pandoc or ``pdftocairo``
+are missing):
+
+* every digit of every generated table survives conversion, and each converted table parses
+  as exactly one docutils table with the source's row count;
+* all 352 number macros become substitutions with identical values;
+* compared with ``main.tex``: every number macro is used the same number of times; every
+  citation is kept with its multiplicity; the 20 bibliography entries are identical text;
+  all cross-references and labels, the 3 figures, 6 tables and 2 equations are present; and
+  the set of hand-typed figures in the prose is unchanged;
+* the HTML build has no warnings, no leftover markup, 6 tables, 3 SVG figures, 20 citations,
+  sequentially numbered floats;
+* the Word file has 6 tables, 3 figures, 2 display equations and over 100 inline equations
+  as native Word equations, numbered captions, resolved cross-references, all 20 references.
+
+The tests were checked to fail when the source is damaged (a replaced number macro, a dropped
+citation, an altered reference, a removed label, an added hand-typed result, a swapped table).
+
+A comparison of the PDF built from ``index.rst`` with the PDF built from ``main.tex`` (same
+generated assets) found the same numeric values and no missing sentences; the differences are
+listed below.
+
+Differences from ``main.tex``
+-----------------------------
+
+All are presentation or labelling, not content:
+
+* A boxed **status note** at the top states that this is an unvalidated draft. It is the only
+  added text.
+* Citations print as keys, ``[hsu2018]``, instead of numbers ``[3]``: the bibliography is
+  plain text, not structured BibTeX, and converting it would have meant retyping entries.
+  Keys are preserved, so nothing can be lost silently.
+* Section numbers differ ("Threats to validity" is a subsection; the appendix is a numbered
+  section); the PDF has no table of contents, as before.
+* Figure captions read "Fig. N" (the original used "Figure N" in captions and "Fig." in text).
+* The PDF uses Computer Modern, as the original did, rather than Sphinx's TeX Gyre default.
+* The vertical gaps between rule groups in two tables (``\addlinespace``) and the horizontal
+  rules under group headers (``\cmidrule``) are not reproduced.
+* Thousands separators are commas (``60,000``, previously a thin space).
+
+Word (``.docx``): verified and known limitations
+------------------------------------------------
+
+Built by pandoc from the RST source (``.. include::`` expanded textually first, because pandoc
+does not see substitutions in included files). ``tools/pandoc_paper.lua`` supplies what Sphinx
+does for the other formats: it numbers tables and figures, resolves ``:numref:``, and selects the
+PNG figures.
+
+* **Not equivalent to the PDF.** Equations are native Word equations but **display equations
+  are not numbered**; the paper never refers to an equation by number. Table column widths are
+  chosen by Word, and the small table font of the PDF is not applied.
+* The layout of the Word file has been checked structurally (the tests above), **not visually
+  in Word**.
+* HTML was checked structurally; only the PDF was inspected visually.
+
+Open items for the validation step (PR 5)
+-----------------------------------------
+
+* **Hand-typed figures.** The draft's prose contains figures that are *not* generated, which the
+  plan forbids for results. Each must be generated or removed: "about 0.3–0.5 points" (seed
+  spread), "about :math:`1.4\times` the parameters", "roughly 2.5–3 times as long",
+  "about 11 points", "about 2.8 points", "roughly 2.6 points", "64.8%" and "78.0%" (cells of
+  the cells table), "about 76–78%", "about 78%", "about 17%", "about 5,900 current examples",
+  "the 60 best candidates". ("10%/90%" are the split sizes, "95%" is the interval level and
+  "1.0" the protocol version; those are design, not results.)
+* **Provenance statement.** The appendix describes the original draft's environment (core
+  commit ``b0b917e…`` plus 21 uncommitted modifications); the benchmark now pins core
+  ``f90eac9…``. It is preserved verbatim and must be rewritten once the results are rerun.
+* **Generator output.** ``tools/build_paper_assets.py`` still writes LaTeX. The converter works
+  from that output; making the generator emit a neutral form would remove a step. Its
+  ``table_cells.tex`` also declares 11 columns where every row has 10 (harmless in LaTeX; the
+  converter uses the 10 that carry content).

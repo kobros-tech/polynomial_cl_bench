@@ -140,11 +140,14 @@ Status by component
      - Command-line entry points load. They consume the core's per-degree study results, which
        are not part of this repository, and were not run in this review.
    * - Research paper (``paper/``)
-     - Implemented (draft)
-     - A LaTeX manuscript with generated tables. The raw results its numbers were generated
-       from are not in the repository, so its numbers cannot currently be traced to benchmark
-       output here. **Not validated; not publication-ready.** Migration to reStructuredText
-       and validation of every numerical claim are separate pieces of work.
+     - Integration-tested (format migration only)
+     - The draft manuscript is now written in reStructuredText (``paper/index.rst``) and builds
+       to HTML, PDF and Word. ``tests/test_paper.py`` shows that the migration preserved the
+       draft's number macros, citations, bibliography, labels, tables, figures and equations
+       against the previous ``paper/main.tex``. The raw results its numbers were generated from
+       are not in the repository, so the numbers still cannot be traced to benchmark output
+       here. **Not validated; not publication-ready.** Validation of every numerical claim is a
+       separate piece of work; see ``paper/README.rst`` for the open items.
    * - Codabench / OpenML integrations
      - Not implemented
      - Planned.
@@ -181,4 +184,7 @@ What has not been run
   results that do not exist; it also declares ``official`` mode).
 * Model selection on real tuning results.
 * Any reproduction on different hardware or a different BLAS.
-* The analysis and paper-asset tools in ``tools/``, and the mutation-check scripts.
+* The analysis and paper-asset tools in ``tools/`` (``analyze_per_degree_study.py``,
+  ``run_comparison_study.py``, ``build_paper_assets.py``), and the mutation-check scripts.
+  ``build_paper.py`` and ``paper_rst_assets.py`` were run, on the committed generated assets.
+* Any check of the paper's numbers against executed benchmark output.

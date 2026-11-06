@@ -44,9 +44,19 @@ raw results (``results/``) are not committed.
 The paper draft
 ---------------
 
-``paper/main.tex`` is a LaTeX manuscript. Its tables, figures and number macros are generated
-into ``paper/generated/`` by ``tools/build_paper_assets.py``, so numerical results are not typed
-into the text. The draft has **not** been validated: its claims have not been audited against
-executed benchmark output, and it must not be cited as a source of verified results. Moving it
-to reStructuredText sources built by Sphinx, and validating every table, figure and numerical
-statement against actual experiments, are later steps.
+``paper/index.rst`` is the canonical source of the manuscript, a reStructuredText document built
+by Sphinx into HTML, PDF and Word (``python tools/build_paper.py``; see ``paper/README.rst``).
+Its tables, figures and most numbers are generated into ``paper/generated/`` by
+``tools/build_paper_assets.py`` and enter the text only as substitutions and included tables.
+A few result figures in the draft's prose were typed by hand; they are listed in
+``paper/README.rst`` and are not generated.
+
+The earlier LaTeX manuscript, ``paper/main.tex``, is kept unchanged as the reference for the
+format migration. ``tests/test_paper.py`` checks that the number macros, citations,
+bibliography, labels, tables, figures and equations were all preserved, and that the HTML and
+Word builds contain them. The Word version is not equivalent to the PDF: display equations are
+unnumbered and table layout is left to Word.
+
+The draft has **not** been validated: its claims have not been audited against executed
+benchmark output, and it must not be cited as a source of verified results. Validating every
+table, figure and numerical statement against actual experiments is a later step.

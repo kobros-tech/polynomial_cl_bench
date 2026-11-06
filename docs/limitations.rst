@@ -66,5 +66,8 @@ Research paper
 The manuscript in ``paper/`` is a draft. Its numbers come from generated macros whose raw
 inputs are not in this repository, so they are not traceable to benchmark output here, and its
 claims have not been audited against executed experiments. Do not cite figures from it as
-verified results. Migrating it to reStructuredText and validating every claim are separate
-steps.
+verified results. It has been migrated to reStructuredText (format only, content unchanged),
+and the HTML and PDF builds are the same text; the Word build is not equivalent (display
+equations are unnumbered, table layout is Word's). Validating every claim is a separate step.
+The draft's prose also contains a few hand-typed result figures that are not generated; they are
+listed in ``paper/README.rst``.
