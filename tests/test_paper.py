@@ -334,6 +334,28 @@ def test_html_figures_are_the_derived_svgs_and_exist(html_dir):
 # ------------------------------------------------------------------ Word build
 
 
+def _docx_paragraphs(xml: str) -> list[str]:
+    """Text of each Word paragraph, read through an XML parser.
+
+    Different pandoc versions write ``document.xml`` compact or pretty-printed; the
+    indentation of the latter must not matter, so text is taken from ``w:t``/``m:t`` elements
+    only and never from the whitespace between tags.
+    """
+    from xml.etree import ElementTree
+
+    root = ElementTree.fromstring(xml)
+    ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    paragraphs = []
+    for para in root.iter(ns + "p"):
+        text = "".join(
+            el.text or ""
+            for el in para.iter()
+            if el.tag.endswith("}t") and el.text is not None
+        )
+        paragraphs.append(text.strip())
+    return paragraphs
+
+
 @pytest.fixture(scope="module")
 def docx_parts():
     if shutil.which("pandoc") is None or shutil.which("pdftocairo") is None:
@@ -362,7 +384,8 @@ def test_docx_has_the_equations_tables_figures_and_numbers(docx_parts):
 
 def test_docx_cross_references_captions_and_citations_are_resolved(docx_parts):
     xml, _ = docx_parts
-    text = re.sub(r"<[^>]+>", "", xml.replace("</w:p>", "\n"))
+    paragraphs = _docx_paragraphs(xml)
+    text = "\n".join(paragraphs)
     for leftover in ("|num", "numref", "??", "tab-", "fig-"):
         assert leftover not in text, leftover
     assert sorted(re.findall(r"Table (\d)\.", text)) == list("123456")
@@ -370,7 +393,17 @@ def test_docx_cross_references_captions_and_citations_are_resolved(docx_parts):
     assert "Table 2 gives" in text and "Table 6" in text
     for key in _bibliography_rst():
         assert f"[{key}]" in text, key  # cited in the running text
-        assert f"\n{key}\n" in text, key  # and listed in the bibliography
+        assert key in paragraphs, key  # and listed in the bibliography
     assert "77.8%" in text and "13,834" in text  # generated values reached the document
     # Known limitation (docs): the Word equations carry no numbers.
     assert "(1)" not in text
+
+
+def test_docx_text_extraction_ignores_xml_pretty_printing(docx_parts):
+    """The check above must give the same answer for compact and indented XML."""
+    from xml.dom import minidom
+
+    xml, _ = docx_parts
+    pretty = minidom.parseString(xml.encode("utf-8")).toprettyxml(indent="    ")
+    assert pretty.count("\n") > xml.count("\n")  # really re-indented
+    assert _docx_paragraphs(pretty) == _docx_paragraphs(xml)
