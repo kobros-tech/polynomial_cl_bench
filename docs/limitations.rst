@@ -16,15 +16,22 @@ Not implemented
 Implemented but not yet run on real data
 ----------------------------------------
 
-* Validation tuning, for either algorithm: no tuning result exists, so no hyper-parameter has
-  been selected, and the tuned comparison cannot run.
-* The ER-MLP on real MNIST.
-* Model selection under the four objectives on real tuning results.
+* An **official-mode** run. Tuning, the tuned comparison and the four-objective selection have
+  been executed on real MNIST (see :doc:`status`), but only in development mode, because the
+  pinned core commit and the benchmark checkout could not be verified where they ran. The
+  benchmark reports those results as not publishable.
 * A reproduction on different hardware or with a different BLAS.
+* The core's per-degree study (update rules, per-degree rates, sampling-policy cells,
+  ten-epoch runs, ablations) on which the draft manuscript's analysis rests.
 
 Known limits of the design
 --------------------------
 
+* **Searched grids have edges.** For the executed tuning, the selected polynomial learning
+  rate is the largest one searched and the selected ER-MLP width is the largest searched, so
+  the best configuration may lie outside the approved grids. The grids were not changed.
+* **Five evaluation seeds, two selection seeds.** Intervals are wide and the comparison is
+  descriptive.
 * **The polynomial core is observed, not controlled.** It trains and evaluates inside one call,
   so the adapter cannot prove from outside that test data is untouched or that future classes
   never compete. Both are checked indirectly (see :doc:`algorithms`).
