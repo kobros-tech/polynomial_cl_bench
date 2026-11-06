@@ -10,8 +10,8 @@ from unittest import mock
 
 import numpy as np
 from helpers import small_protocol, synthetic_dataset
-from polynomial_cl.class_incremental import TASK_ORDER
-from polynomial_cl.class_incremental.experiment import accuracy_by_task
+from polynomial_cl.continual import TASK_ORDER
+from polynomial_cl.continual.experiment import accuracy_by_task
 
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms import er_mlp as module

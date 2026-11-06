@@ -9,17 +9,38 @@ description = "Independent benchmark environment for continual-learning algorith
 requires-python = ">=3.9"
 dependencies = [
     "numpy",
-    # Pinned upstream commit. Verify it exists on the remote before releasing:
+    # Pinned to an immutable full commit SHA, never a branch name.
+    # f90eac9 is the merge commit of core PR #5 (the `continual` / `data` refactor) on the core's
+    # `main`; its tree is identical to the earlier PR #5 tip 92f5fde. When the pin is changed, keep
+    # the URL identical (provenance compares it) and check the commit exists on the remote:
     #   git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git
-    #   (or clone and run: git branch -r --contains 9e1573238a1c1e21d63a196daee0ec1ca9037d16)
-    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@9e1573238a1c1e21d63a196daee0ec1ca9037d16",
+    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@f90eac99a7a6793ec93168ab6381cf0586d82199",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "ruff", "scipy"]
+# Documentation build (docs/). The core is a regular dependency, so autodoc can import every module.
+docs = ["sphinx>=7", "furo"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Explicit on purpose: recent Ruff versions enable only the F rules by default, which would make
+# "ruff passes" a much weaker statement than the pre-commit hook suggests.
+# BLE: a blind `except Exception` is allowed only where the code records the failure and carries
+# `# noqa: BLE001 - <why>` (runner, worker, tuning).
+select = ["F", "E4", "E7", "E9", "BLE"]
+# Pre-existing style, not changed here: `l` as a loop variable and lambda assignments.
+ignore = ["E731", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path is extended before the package imports in scripts, and a helper block sits mid-file.
+"tools/*.py" = ["E402"]
+"tests/helpers.py" = ["E402"]

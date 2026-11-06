@@ -219,7 +219,7 @@ class Study:
                 replay_examples_by_task=result.replay_examples_used_by_task,
                 plan_fingerprint=result.run_config["plan_fingerprint"],
             )
-        except (RuntimeError, ValueError, OSError, ArithmeticError) as error:
+        except Exception as error:  # noqa: BLE001 - a failed run is a recorded failure, never silently dropped
             record.update(status="failed", error=f"{type(error).__name__}: {error}")
         self.store.add(record)
         self.log(

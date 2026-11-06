@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from fakes import FakeAdapter, fake_factory, fake_plan_factory
-from helpers import small_protocol, synthetic_dataset
+from helpers import small_protocol, synthetic_dataset, unverified_core_provenance
 
 from polynomial_cl_bench import results, runner
 from polynomial_cl_bench.provenance import ProvenanceError
@@ -232,7 +232,12 @@ class FailureHandling(Base):
         )
 
     def test_official_mode_is_refused_before_anything_is_written(self):
-        with self.assertRaises(ProvenanceError):
+        with (
+            mock.patch.object(
+                runner, "core_provenance", return_value=unverified_core_provenance()
+            ),
+            self.assertRaises(ProvenanceError),
+        ):
             go(spec(mode="official"), self.out)
         self.assertFalse(self.out.exists())
         self.assertEqual(FakeAdapter.calls, [])

@@ -8,7 +8,7 @@ from unittest import mock
 import numpy as np
 from helpers import POLYNOMIAL_CONFIG_PATH, small_protocol, synthetic_dataset
 from polynomial_cl import metrics as core_metrics
-from polynomial_cl.class_incremental import TASK_ORDER
+from polynomial_cl.continual import TASK_ORDER
 
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms import polynomial as module
