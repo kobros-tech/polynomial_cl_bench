@@ -390,7 +390,15 @@ class ExperimentValidation(Base):
 
     def test_publishable_when_every_condition_holds(self):
         """Everything satisfied: official mode, tuned configs, test split, reproducibility."""
-        tuned = {"selection": "validation_tuning", "tuning_official_eligible": True}
+        tuned = {
+            "selection": "validation_tuning",
+            "tuning_official_eligible": True,
+            "criterion": "rule",
+            "selection_margin": 0.005,
+            "selection_seeds": [100, 101],
+            "budget_runs": 30,
+            "validation_fingerprint": "v" * 64,
+        }
         s = spec(
             [
                 ("a", {"algorithm": "fa", "hyperparameter_provenance": tuned}),
@@ -417,6 +425,50 @@ class ExperimentValidation(Base):
             remaining,
         )
         self.assertEqual(summary["problems"], [])
+
+    def _blockers_for(self, prov_a, prov_b):
+        from polynomial_cl_bench.validation import _selection_procedure_blockers
+
+        configs = {
+            "a": {"hyperparameter_provenance": prov_a},
+            "b": {"hyperparameter_provenance": prov_b},
+        }
+        return _selection_procedure_blockers(["a", "b"], configs)
+
+    def _prov(self, **override):
+        base = {
+            "selection": "validation_tuning",
+            "criterion": "rule",
+            "selection_margin": 0.005,
+            "selection_seeds": [100, 101],
+            "budget_runs": 30,
+            "validation_fingerprint": "v" * 64,
+        }
+        return {**base, **override}
+
+    def test_same_selection_procedure_raises_no_blocker(self):
+        self.assertEqual(self._blockers_for(self._prov(), self._prov()), [])
+
+    def test_different_selection_procedures_block_a_comparison(self):
+        for key, other in [
+            ("criterion", "another rule"),
+            ("selection_margin", 0.01),
+            ("selection_seeds", [100, 102]),
+            ("budget_runs", 15),
+            ("validation_fingerprint", "w" * 64),
+        ]:
+            with self.subTest(key=key):
+                blockers = self._blockers_for(self._prov(), self._prov(**{key: other}))
+                self.assertEqual(len(blockers), 1, blockers)
+                self.assertIn(key, blockers[0])
+
+    def test_unrecorded_selection_procedure_blocks_rather_than_passes(self):
+        legacy = self._prov()
+        del legacy["budget_runs"]
+        blockers = self._blockers_for(self._prov(), legacy)
+        self.assertTrue(
+            any("not recorded" in b and "budget_runs" in b for b in blockers)
+        )
 
 
 if __name__ == "__main__":

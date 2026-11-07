@@ -263,6 +263,11 @@ def apply_tuning_result(config: dict, tuning_path, protocol: Protocol, seeds) ->
         "selected_index": tuning["selected_index"],
         "selection_seeds": tuning["selection_seeds"],
         "criterion": tuning["criterion"],
+        "selection_margin": tuning.get("selection_margin"),
+        "budget_runs": tuning.get("budget_runs"),
+        "validation_fingerprint": tuning.get("validation_dataset", {}).get(
+            "fingerprint"
+        ),
         "grid_file": context.get("grid_file"),
         "grid_sha256": context.get("grid_sha256"),
         "tuning_run_mode": context.get("run_mode"),

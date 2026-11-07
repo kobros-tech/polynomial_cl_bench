@@ -27,6 +27,47 @@ def _single(values) -> bool:
     return len(set(map(repr, values))) <= 1
 
 
+# What must be identical for two algorithms to count as tuned "by the same procedure":
+# the selection rule, its margin, the selection seeds, the number of tuning runs (the
+# budget) and the validation split the candidates were scored on. The grids themselves
+# necessarily differ (different hyper-parameters), so they are not compared.
+SELECTION_PROCEDURE_KEYS = (
+    "criterion",
+    "selection_margin",
+    "selection_seeds",
+    "budget_runs",
+    "validation_fingerprint",
+)
+
+
+def _selection_procedure_blockers(labels, configs) -> list:
+    tuned = {
+        label: configs[label].get("hyperparameter_provenance") or {}
+        for label in labels
+        if (configs[label].get("hyperparameter_provenance") or {}).get("selection")
+        == "validation_tuning"
+    }
+    if len(tuned) < 2:
+        return []
+    blockers = []
+    for key in SELECTION_PROCEDURE_KEYS:
+        missing = sorted(
+            label for label, prov in tuned.items() if prov.get(key) is None
+        )
+        if missing:
+            blockers.append(
+                f"selection procedure not recorded for {missing} ({key}); "
+                "cannot show the algorithms were tuned alike"
+            )
+        elif not _single(prov[key] for prov in tuned.values()):
+            blockers.append(
+                f"algorithms were not tuned by the same procedure: {key} differs ("
+                + "; ".join(f"{label}={tuned[label][key]!r}" for label in tuned)
+                + ")"
+            )
+    return blockers
+
+
 def validate_experiment(
     manifest: dict, records: list, invalid: list, reproducibility: list
 ) -> dict:
@@ -166,6 +207,7 @@ def validate_experiment(
             )
         elif provenance.get("tuning_official_eligible") is not True:
             blockers.append(f"{label}: its tuning result is not official-eligible")
+    blockers += _selection_procedure_blockers(labels, configs)
     if not reproducibility:
         blockers.append("reproducibility check was not run (--reproduce-check)")
     for item in reproducibility:

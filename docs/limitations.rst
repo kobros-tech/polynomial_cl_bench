@@ -16,10 +16,13 @@ Not implemented
 Implemented but not yet run on real data
 ----------------------------------------
 
-* Validation tuning, for either algorithm: no tuning result exists, so no hyper-parameter has
-  been selected, and the tuned comparison cannot run.
-* The ER-MLP on real MNIST.
-* Model selection under the four objectives on real tuning results.
+* Official-mode validation tuning, for either algorithm. Development-mode tuning has been run
+  on real MNIST for both (30 of 30 runs each) and the tuned comparison has been run from it
+  (10 of 10 runs), but those records carry no core or benchmark commit, are not
+  official-eligible, and the comparison is reported as not publishable. Neither has been
+  repeated under the pinned core in ``official`` mode.
+* Model selection under the four objectives on those tuning results (only the default
+  rule's ``selected_config`` has been used).
 * A reproduction on different hardware or with a different BLAS.
 
 Known limits of the design
@@ -42,6 +45,12 @@ Known limits of the design
   is sensitive to BLAS threading, and a pass does not show cross-machine reproducibility.
 * **Remote verification** is offline evidence and cannot detect a force-push after the last
   fetch (see :doc:`reproducibility`).
+* **Grid edges.** In the development-mode tuning the selected polynomial learning rate (1.0)
+  is the largest value searched, and mean validation accuracy was still rising towards it
+  (for ``feature_power`` 0.5: 0.7447 at 0.3, 0.7682 at 1.0). The selected ER-MLP width (256)
+  is the largest searched, and accuracy rose with width at every learning rate searched (0.01 to 1.0). The optimum for either method may therefore lie outside its grid, and a gap between
+  them could partly reflect which grid reaches its optimum. The approved grids were not
+  changed; extending them needs a separately approved investigation.
 * **Tuning budgets.** The grids are small (15 configurations, 2 seeds). The per-degree
   polynomial configuration comes from a limited candidate search in the core, not from this
   benchmark's tuning procedure. Nothing here supports a claim that either method is optimal.

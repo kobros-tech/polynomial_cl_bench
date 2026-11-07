@@ -66,9 +66,7 @@ class ExperiencePlan:
     train_size: int
     label_fingerprint: str  # sha256 of the training labels the plan was cut from
     tasks: tuple  # per experience: training indices (already shuffled by the core)
-    memory: (
-        Mapping  # class id -> replay-memory indices (fixed per class, one random subset)
-    )
+    memory: Mapping  # class id -> replay-memory indices (fixed per class, one random subset)
 
     def __post_init__(self) -> None:
         # A frozen dataclass only forbids rebinding fields; a plain dict would still be

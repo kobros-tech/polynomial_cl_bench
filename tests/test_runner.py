@@ -23,7 +23,15 @@ from polynomial_cl_bench.runner import (
 )
 from polynomial_cl_bench.summarize import summarize_directory
 
-TUNED = {"selection": "validation_tuning", "tuning_official_eligible": True}
+TUNED = {
+    "selection": "validation_tuning",
+    "tuning_official_eligible": True,
+    "criterion": "rule",
+    "selection_margin": 0.005,
+    "selection_seeds": [100, 101],
+    "budget_runs": 30,
+    "validation_fingerprint": "v" * 64,
+}
 
 
 def spec(algos=None, seeds=(0, 1, 2), **kw):

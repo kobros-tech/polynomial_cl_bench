@@ -126,6 +126,7 @@ data they came from.
 
 .. note::
 
-   Selection on real MNIST tuning results has not been done, because no tuning result for real
-   data exists yet. An experiment specification cannot yet choose an objective other than the
+   Selection under the four objectives has not been run on real MNIST tuning results; only the
+   default rule was applied, in the development-mode tuning in ``results/`` (see
+   :doc:`status`). An experiment specification cannot yet choose an objective other than the
    default tuning rule: it consumes ``selected_config`` only. See :doc:`limitations`.

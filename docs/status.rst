@@ -99,9 +99,10 @@ Status by component
        *before* its refactor, so this also shows that the refactored core reproduces them.
        The per-degree learning-rate configuration is only checked through these stored records.
    * - ER-MLP competitor
-     - Core-verified
-     - Unit-tested, and run through the real runner and worker process on synthetic data with
-       the real core. **Not run on real MNIST** in this review.
+     - Real-data-verified (development mode)
+     - Unit-tested, run on synthetic data with the real core, and run on real MNIST in the
+       development-mode tuning and tuned comparison in ``results/``. Not run in ``official``
+       mode.
    * - Batch sampling (``sampling.py``)
      - Core-verified
      - Compared draw for draw with the core's batcher and with batches captured inside a real
@@ -124,13 +125,15 @@ Status by component
        independent reproduction on other hardware.
    * - Validation tuning (``tune.py``, ``tuning.py``)
      - Core-verified
-     - Tested end to end on synthetic data with the real core. **Not run on real MNIST: no
-       tuning result exists**, so no hyper-parameter has been selected for either algorithm.
+     - Run on real MNIST for both algorithms in *development* mode (30 of 30 runs each,
+       validation split). The records name no core or benchmark commit and are not
+       official-eligible, so no hyper-parameter selection is yet usable for a publishable
+       comparison. Not run in ``official`` mode.
    * - Model selection, four objectives (``selection.py``)
      - Unit-tested
      - Tested on constructed candidate pools, for equivalence with the earlier analysis
        script, and in an end-to-end ``tune()``-to-report test with prescribed adapters. Not run
-       on tuning results from real data (none exist).
+       on the real-data tuning results (only the default rule was applied there).
    * - Official-run provenance gate
      - Core-verified
      - In the clean environment above the core is reported as a remote-verified pip VCS install
@@ -178,13 +181,26 @@ These are consistency checks of the integration, not benchmark results.
 What has not been run
 ---------------------
 
-* Validation tuning on real MNIST, for either algorithm.
-* The ER-MLP on real MNIST, through the runner or otherwise.
-* The intended comparison, ``configs/experiment_tuned_comparison.json`` (it requires tuning
-  results that do not exist; it also declares ``official`` mode).
+* Validation tuning on real MNIST in ``official`` mode, for either algorithm (development
+  mode has been run, see above).
+* The intended comparison, ``configs/experiment_tuned_comparison.json``, in ``official``
+  mode. A development-mode run exists in ``results/tuned_comparison`` (10 completed, 0
+  failed, integrity passed); the benchmark reports it as not publishable.
 * Model selection on real tuning results.
 * Any reproduction on different hardware or a different BLAS.
 * The analysis and paper-asset tools in ``tools/`` (``analyze_per_degree_study.py``,
   ``run_comparison_study.py``, ``build_paper_assets.py``), and the mutation-check scripts.
   ``build_paper.py`` and ``paper_rst_assets.py`` were run, on the committed generated assets.
 * Any check of the paper's numbers against executed benchmark output.
+
+Comparability of the two algorithms
+-----------------------------------
+
+A comparison is reported publishable only if each algorithm's hyper-parameters came from a
+validation-tuning result that is official-eligible **and** both results were produced by the
+same selection procedure: the same selection rule and margin, the same selection seeds, the
+same number of tuning runs and the same validation split. ``validate_experiment`` records a
+publication blocker when any of these differs or was not recorded. Tuning results written
+before this check existed lack the budget and validation-split fields, so a comparison built
+from them is blocked until they are regenerated. The development-mode records in
+``results/`` are in that position; they are also not official-eligible.
