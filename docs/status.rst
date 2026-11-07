@@ -99,9 +99,9 @@ Status by component
        *before* its refactor, so this also shows that the refactored core reproduces them.
        The per-degree learning-rate configuration is only checked through these stored records.
    * - ER-MLP competitor
-     - Real-data-verified (development mode)
-     - Unit-tested; on real MNIST it was tuned and then run for seeds 0-4 through the real
-       runner and worker process in the PR 5 run below.
+     - Core-verified
+     - Unit-tested, and run through the real runner and worker process on synthetic data with
+       the real core. **Not run on real MNIST** in this review.
    * - Batch sampling (``sampling.py``)
      - Core-verified
      - Compared draw for draw with the core's batcher and with batches captured inside a real
@@ -123,14 +123,14 @@ Status by component
        bit-identical results. This is a same-machine, same-environment repeat, not an
        independent reproduction on other hardware.
    * - Validation tuning (``tune.py``, ``tuning.py``)
-     - Real-data-verified (development mode)
-     - Run on real MNIST for both algorithms (30 runs each, all completed; PR 5 run below).
-       Selected values are reported in ``paper/benchmark_results.rst``. Not official-eligible.
+     - Core-verified
+     - Tested end to end on synthetic data with the real core. **Not run on real MNIST: no
+       tuning result exists**, so no hyper-parameter has been selected for either algorithm.
    * - Model selection, four objectives (``selection.py``)
-     - Real-data-verified (development mode)
-     - Tested on constructed candidate pools and end to end; applied to the real tuning results
-       of both algorithms in the PR 5 run below, for all four objectives with and without the
-       accuracy floor.
+     - Unit-tested
+     - Tested on constructed candidate pools, for equivalence with the earlier analysis
+       script, and in an end-to-end ``tune()``-to-report test with prescribed adapters. Not run
+       on tuning results from real data (none exist).
    * - Official-run provenance gate
      - Core-verified
      - In the clean environment above the core is reported as a remote-verified pip VCS install
@@ -175,45 +175,16 @@ row to full printed precision):
 
 These are consistency checks of the integration, not benchmark results.
 
-PR 5: real-data tuning and tuned comparison
--------------------------------------------
-
-Executed on 2026-11-06 on one CPU (Linux, Python 3.12.3, NumPy 2.5.4, single-threaded BLAS),
-in ``development`` mode, with the core taken from the supplied ``polynomial_cl_demo`` archive
-put on ``PYTHONPATH``. That archive is **not the pinned commit** and no commit could be
-determined, so the official-run gate could not pass; the benchmark reports every result below
-as *not publishable*. As a check on the archive, the ``primary_reference`` configuration on
-seed 0 reproduced the core's stored record exactly (difference 0.0 in accuracy and
-forgetting).
-
-.. list-table::
-   :header-rows: 1
-   :widths: 46 54
-
-   * - Command
-     - Result
-   * - ``tune --grid configs/polynomial_grid.json`` and ``--grid configs/er_mlp_grid.json``
-     - 30 validation runs each, all completed
-   * - ``selection`` for both algorithms
-     - four objectives, with and without the accuracy floor, all produced
-   * - ``runner --spec configs/experiment_tuned_comparison.json --mode development
-       --reproduce-check``
-     - 10 completed, 0 failed, integrity passed; seed 0 of each algorithm re-ran
-       bit-identically
-   * - ``tools/build_benchmark_results.py``
-     - regenerated ``paper/generated/benchmark_results.rst`` from those files
-
-The numbers are in ``paper/benchmark_results.rst``. The raw result files are not committed.
-The tests (pytest) and ``ruff`` were **not run** for this change, and the Sphinx builds were
-not run, because those tools were not installed and could not be installed offline.
-
 What has not been run
 ---------------------
 
-* Any **official-mode** run: the tuned comparison ran only with ``--mode development``.
+* Validation tuning on real MNIST, for either algorithm.
+* The ER-MLP on real MNIST, through the runner or otherwise.
+* The intended comparison, ``configs/experiment_tuned_comparison.json`` (it requires tuning
+  results that do not exist; it also declares ``official`` mode).
+* Model selection on real tuning results.
 * Any reproduction on different hardware or a different BLAS.
 * The analysis and paper-asset tools in ``tools/`` (``analyze_per_degree_study.py``,
   ``run_comparison_study.py``, ``build_paper_assets.py``), and the mutation-check scripts.
   ``build_paper.py`` and ``paper_rst_assets.py`` were run, on the committed generated assets.
-* A regeneration of the draft manuscript's numbers: they come from the core's per-degree
-  study, which is not available here. See ``paper/claim_audit.rst``.
+* Any check of the paper's numbers against executed benchmark output.

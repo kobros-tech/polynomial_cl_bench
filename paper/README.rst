@@ -118,17 +118,8 @@ PNG figures.
   in Word**.
 * HTML was checked structurally; only the PDF was inspected visually.
 
-PR 5 status
------------
-
-* ``benchmark_results.rst`` (generated from executed benchmark output by
-  ``tools/build_benchmark_results.py``) is the only traceable set of results. ``claim_audit.rst``
-  classifies the draft's claims against it. Neither is part of ``index.rst`` yet, and the draft
-  is **still not publication-ready**: most of its analysis rests on the core's per-degree study,
-  whose raw results are not available.
-
-Open items for the validation step
-----------------------------------
+Open items for the validation step (PR 5)
+-----------------------------------------
 
 * **Hand-typed figures.** The draft's prose contains figures that are *not* generated, which the
   plan forbids for results. Each must be generated or removed: "about 0.3–0.5 points" (seed

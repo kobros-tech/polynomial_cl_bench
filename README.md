@@ -85,15 +85,15 @@ reports the comparison as *not publishable* (development mode, untuned configura
 
 `python -m polynomial_cl_bench.tune --grid configs/<algorithm>_grid.json --out ...` runs a grid on
 the validation hold-out only (selection seeds 100 and 101, disjoint from evaluation seeds), records
-every run including failures, and never overwrites a result. Tuning has been run on real MNIST for both algorithms (development mode); the best polynomial
-learning rate and ER-MLP width sit at the edge of the approved grids.
+every run including failures, and never overwrites a result. **No tuning has been run on real
+MNIST yet.**
 
 ## Model selection objectives
 
 `python -m polynomial_cl_bench.selection` ranks tuned configurations under four objectives:
 `max_accuracy`, `min_forgetting`, `min_time` and `best_tradeoff`, with an optional accuracy floor
 (default 0.02) so that models that barely learn do not win the forgetting and time objectives.
-Validation results only; missing values are never zero. Applied to the real tuning results of both algorithms (development mode).
+Validation results only; missing values are never zero. Not yet applied to real tuning results.
 
 ## Reproducibility
 
@@ -139,15 +139,14 @@ real-data-verified, reproducibility-verified, publication-ready.
 | --- | --- |
 | Protocol, data verification and loading, plan, polynomial adapter, runner, records, aggregation | Real-data-verified: reference experiment executed on real MNIST; reproduces the core's stored records |
 | Reproducibility check | One seed re-run bit-identical, single-threaded BLAS, same machine |
-| ER-MLP, validation tuning, model selection, tuned comparison | Executed on real MNIST in development mode (not official-eligible, reported as not publishable); see `docs/status.rst` |
+| ER-MLP, validation tuning, model selection | Core-verified on synthetic data only; **not run on real MNIST** |
 | Tools in `tools/` | Implemented; entry points load; not run |
 | Codabench / OpenML | Not implemented (planned) |
 | Anything publication-ready | **None** |
 
 ## Current limitations
 
-Real-data runs so far are development-mode only (not official-eligible); the best polynomial
-learning rate and ER-MLP width sit at the edge of the approved grids; the polynomial core is
+No tuning results exist for real data, so the tuned comparison cannot run; the polynomial core is
 observed through one call, so some checks are indirect; seeds do not vary the data split; no
 significance tests are computed; reproducibility has not been checked across machines; two
 descriptive strings in the configs still name the core's pre-refactor module path (changing the
