@@ -4,6 +4,7 @@
 """Shared experience/replay plan, validation separation, tuning selection and budget."""
 
 import json
+import pickle
 import unittest
 from dataclasses import replace
 from typing import ClassVar
@@ -19,7 +20,7 @@ from polynomial_cl_bench.algorithms.base import SequenceResult
 from polynomial_cl_bench.algorithms.er_mlp import ERMLPAdapter
 from polynomial_cl_bench.algorithms.polynomial import PolynomialAdapter
 from polynomial_cl_bench.datasets import DatasetVerificationError, validation_view
-from polynomial_cl_bench.plan import PlanError, make_plan
+from polynomial_cl_bench.plan import ExperiencePlan, PlanError, make_plan
 from polynomial_cl_bench.provenance import ProvenanceError
 
 
@@ -52,6 +53,52 @@ class SharedPlan(unittest.TestCase):
         self.assertNotEqual(a.fingerprint(), c.fingerprint())
         with self.assertRaises(ValueError):
             a.memory[0][0] = 0
+
+    def test_fingerprint_changes_when_replay_arrays_are_exchanged_between_classes(self):
+        plan = make_plan(self.dataset.train_y, 3, 9)
+        swapped = dict(plan.memory)
+        swapped[0], swapped[1] = plan.memory[1], plan.memory[0]
+        other = replace(plan, memory=swapped)
+        self.assertNotEqual(plan.fingerprint(), other.fingerprint())
+
+    def test_fingerprint_depends_on_class_ids_not_just_array_order(self):
+        plan = make_plan(self.dataset.train_y, 3, 9)
+        # same arrays in the same sorted order, but filed under different class ids
+        relabelled = {c + 100: plan.memory[c] for c in plan.memory}
+        other = replace(plan, memory=relabelled)
+        self.assertNotEqual(plan.fingerprint(), other.fingerprint())
+
+    def test_fingerprint_depends_on_task_order_and_label_identity(self):
+        plan = make_plan(self.dataset.train_y, 3, 9)
+        reordered = replace(plan, task_order=tuple(reversed(plan.task_order)))
+        self.assertNotEqual(plan.fingerprint(), reordered.fingerprint())
+        relabelled = replace(plan, label_fingerprint="0" * 64)
+        self.assertNotEqual(plan.fingerprint(), relabelled.fingerprint())
+
+    def test_memory_mapping_is_immutable_and_isolated_from_its_source(self):
+        plan = make_plan(self.dataset.train_y, 3, 9)
+        before = plan.fingerprint()
+        with self.assertRaises(TypeError):
+            plan.memory[0] = plan.memory[1]
+        with self.assertRaises(TypeError):
+            del plan.memory[0]
+        source = dict(plan.memory)
+        rebuilt = ExperiencePlan(
+            seed=plan.seed,
+            memory_per_class=plan.memory_per_class,
+            task_order=plan.task_order,
+            train_size=plan.train_size,
+            label_fingerprint=plan.label_fingerprint,
+            tasks=plan.tasks,
+            memory=source,
+        )
+        source[0] = plan.memory[1]  # mutating the caller's dict must not leak in
+        self.assertEqual(rebuilt.fingerprint(), before)
+
+    def test_plan_survives_pickling_with_the_same_fingerprint(self):
+        plan = make_plan(self.dataset.train_y, 3, 9)
+        clone = pickle.loads(pickle.dumps(plan))
+        self.assertEqual(clone.fingerprint(), plan.fingerprint())
 
     def test_both_adapters_receive_identical_experiences_and_replay_rows(self):
         plan = make_plan(self.dataset.train_y, 1, self.protocol.memory_per_class)
