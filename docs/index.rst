@@ -3,7 +3,7 @@ polynomial_cl_bench
 
 ``polynomial_cl_bench`` is an independent benchmark environment for continual-learning
 algorithms. It evaluates the polynomial continual-learning method implemented in
-`polynomial_cl_demo <https://github.com/kobros-tech/polynomial_cl_demo>`_ against competing
+`polynomial_cl_core <https://github.com/kobros-tech/polynomial_cl_core>`_ against competing
 approaches under one protocol, with one shared experience and replay plan per seed,
 validation-only hyper-parameter selection, and result records that carry the provenance
 needed to reproduce them.
@@ -22,7 +22,7 @@ version 1.0). The first competitor is an experience-replay MLP (ER-MLP).
 Two repositories, one direction of dependency
 ---------------------------------------------
 
-``polynomial_cl_demo`` (installed as the Python package ``polynomial_cl``, called *the core*
+``polynomial_cl_core`` (installed as the Python package ``polynomial_cl``, called *the core*
 here) owns the method. This repository owns the evaluation. The dependency points one way:
 ``polynomial_cl_bench`` depends on ``polynomial_cl``, never the reverse, and the core is pinned
 to an immutable commit. See :doc:`architecture`.

@@ -26,7 +26,7 @@ The core dependency is declared in ``pyproject.toml`` as a ``git+https`` URL wit
 
 .. code-block:: text
 
-   polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@f90eac99a7a6793ec93168ab6381cf0586d82199
+   polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_core.git@4d7e6928e594c7618be6382542b7818a34ef3072
 
 That commit is the merge commit, on the core's ``main``, of the refactor that introduced the
 ``polynomial_cl.continual`` and ``polynomial_cl.data`` packages, which this benchmark uses.
@@ -41,7 +41,7 @@ Using a local checkout of the core
 ----------------------------------
 
 For development you may install the core from a local clone instead
-(``pip install -e ../polynomial_cl_demo``). Development-mode runs accept any installed core and
+(``pip install -e ../polynomial_cl_core``). Development-mode runs accept any installed core and
 record which one was used. An ``official`` run accepts a local checkout only if it is clean, is
 at the pinned commit, and its remote URL and remote-tracking refs show the commit exists on the
 pinned remote; see :doc:`reproducibility`.

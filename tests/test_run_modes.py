@@ -22,7 +22,7 @@ def provenance(**override):
         "version": "0.1.0",
         "commit": PIN,
         "commit_source": "pip_vcs_install",
-        "remote_url": "https://github.com/kobros-tech/polynomial_cl_demo.git",
+        "remote_url": "https://github.com/kobros-tech/polynomial_cl_core.git",
         "remote_verified": True,
         "remote_verification": "pip fetched the commit",
         "pinned_commit": PIN,

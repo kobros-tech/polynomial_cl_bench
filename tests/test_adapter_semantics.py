@@ -279,7 +279,7 @@ class Provenance(unittest.TestCase):
     def test_pip_vcs_install_counts_as_remote_fetched_and_checks_the_pin(self):
         pin = prov.pinned_core_commit()
         self.assertRegex(pin, r"^[0-9a-f]{40}$")
-        url = "https://github.com/kobros-tech/polynomial_cl_demo.git"
+        url = "https://github.com/kobros-tech/polynomial_cl_core.git"
         ok = self.provenance_for(
             {"url": url, "vcs_info": {"vcs": "git", "commit_id": pin}}
         )

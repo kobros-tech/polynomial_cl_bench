@@ -63,7 +63,7 @@ class ProtocolTests(unittest.TestCase):
 
     def test_core_pin_is_a_full_commit_hash(self):
         text = (ROOT / "pyproject.toml").read_text()
-        match = re.search(r"polynomial_cl_demo\.git@(\S+?)\"", text)
+        match = re.search(r"polynomial_cl_core\.git@(\S+?)\"", text)
         self.assertIsNotNone(match)
         self.assertRegex(match.group(1), r"^[0-9a-f]{40}$")
 

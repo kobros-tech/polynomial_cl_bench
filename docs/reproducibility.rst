@@ -50,7 +50,7 @@ pin is never a branch. To change it:
 
 1. Edit the SHA in ``pyproject.toml``, keeping the URL identical (provenance compares URLs).
 2. Check the commit exists on the remote: ``git ls-remote
-   https://github.com/kobros-tech/polynomial_cl_demo.git``.
+   https://github.com/kobros-tech/polynomial_cl_core.git``.
 3. Reinstall (``pip install -e .``): the pin is read from installed metadata.
 4. Re-run the tests with ``BENCH_REQUIRE_CORE=1 BENCH_REQUIRE_PINNED_CORE=1``.
 

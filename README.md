@@ -1,7 +1,7 @@
 # polynomial_cl_bench
 
 An independent benchmark for continual-learning algorithms. It evaluates the polynomial
-continual-learning method from [polynomial_cl_demo](https://github.com/kobros-tech/polynomial_cl_demo)
+continual-learning method from [polynomial_cl_core](https://github.com/kobros-tech/polynomial_cl_core)
 against competing approaches under one protocol, with a shared experience/replay plan per seed,
 validation-only hyper-parameter selection and provenance-carrying result records.
 
@@ -18,13 +18,13 @@ replay exemplars, the same training budget, hyper-parameters chosen on validatio
 every result tied to the exact code that produced it. The benchmark does not judge the method; it
 produces numbers and the evidence needed to trust them.
 
-## Relationship to polynomial_cl_demo
+## Relationship to polynomial_cl_core
 
-`polynomial_cl_demo` (Python package `polynomial_cl`, "the core") owns the method. This repository
+`polynomial_cl_core` (Python package `polynomial_cl`, "the core") owns the method. This repository
 owns the evaluation and **never re-implements** the polynomial model, features, training or
 replay. The dependency is one-way, `polynomial_cl_bench -> polynomial_cl`, and the core is pinned
 in `pyproject.toml` to a full commit SHA (never a branch), currently
-`f90eac99a7a6793ec93168ab6381cf0586d82199`.
+`4d7e6928e594c7618be6382542b7818a34ef3072`.
 
 ## Architecture
 

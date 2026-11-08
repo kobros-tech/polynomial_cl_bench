@@ -35,7 +35,7 @@ How these statements were obtained
 Everything below marked as verified was executed for this documentation, on 2026-11-05, in a
 fresh virtual environment (Linux, Python 3.12.3, NumPy 2.5.4) created with
 ``pip install -e ".[dev]"``, so that the core was installed from the pin in ``pyproject.toml``
-(core commit ``f90eac99a7a6793ec93168ab6381cf0586d82199``, the merge commit of the core's
+(core commit ``4d7e6928e594c7618be6382542b7818a34ef3072``, the merge commit of the core's
 ``continual``/``data`` refactor on its ``main``).
 
 .. list-table::
