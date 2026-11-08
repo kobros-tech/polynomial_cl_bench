@@ -121,6 +121,14 @@ sphinx-build -W --keep-going -b latex docs docs/_build/latex && make -C docs/_bu
 
 CI builds all three with warnings as errors.
 
+## Producing the results
+
+The results the paper and the documentation quote are produced by two GitHub workflows started by
+hand, `paper-results` (the core's per-degree study as independent parallel jobs, then the
+analysis, the comparison study and the regenerated paper assets) and `benchmark-results` (the
+runner pipeline: tuning, tuned comparison, reproducibility check). They commit nothing; results
+are uploaded as artifacts. See `docs/analysis_and_paper.rst`.
+
 ## Research paper
 
 `paper/index.rst` is the canonical source of a **draft** manuscript (reStructuredText, built with

@@ -337,6 +337,8 @@ _RESOURCE_DEFAULTS = {
     "training_time_seconds": None,
     "inference_time_seconds": None,
     "adapter_wall_time_seconds_including_evaluation": None,
+    "feature_construction_seconds": None,
+    "adapter_execution": None,
     "n_parameters": None,
     "replay_memory_examples_max": None,
     "replay_memory_bytes_max": None,
@@ -475,6 +477,8 @@ def _resources(meter: RunMeter, result, dataset) -> dict:
         "adapter_wall_time_seconds_including_evaluation": reported.get(
             "wall_time_seconds_including_evaluation"
         ),
+        "feature_construction_seconds": reported.get("feature_construction_seconds"),
+        "adapter_execution": reported.get("execution"),
         "n_parameters": reported.get("n_parameters"),
         "replay_memory_examples_max": max_used,
         "replay_memory_bytes_max": None

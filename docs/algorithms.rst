@@ -56,8 +56,23 @@ explicitly. Consequences:
   benchmark-side implementation and match every row of the matrix, check that future-class
   output columns are exactly zero at every evaluation, and check that each experience trains
   only on its own classes plus replay of old classes.
-* Per-class accuracy, separate training and inference time, and peak memory are unavailable
-  and recorded as ``null``. The adapter reports the wall time *including evaluation* instead.
+* Per-class accuracy and peak memory are unavailable and recorded as ``null``. The adapter
+  reports the wall time *including evaluation*. When the installed core can report its own
+  split of a run (the ``timings`` argument of its ``run_condition``), the training time is
+  the time in the core's trainer and the inference time is the time spent building the
+  accuracy matrix; a core without it leaves both ``null``. The one-off construction of the
+  degree-3 design matrix is reported separately as ``feature_construction_seconds`` (``0.0``
+  when the features of the same dataset were already available in the process).
+* **Lean mode.** The benchmark reads only the accuracy matrix and the core's accuracy and
+  forgetting summary, so when the core offers it (``diagnostics`` argument of its
+  ``run_condition``) the adapter runs it with ``diagnostics=False``: the core's
+  observation-only work (full training-set loss passes, per-degree statistics, old-class
+  indicators) is skipped, because it never influences learning and ER-MLP has no counterpart.
+  The accuracy matrix is the same either way; ``tests/test_lean_adapter.py`` checks it.
+  ``PolynomialAdapter(diagnostics=True)`` restores the full run for research, and is not part
+  of the algorithm's configuration or identity. How a run was executed (core lean mode
+  available, diagnostics on or off, features from cache, the core's timing split) is stored
+  in ``resources.adapter_execution``. A core without the lean mode simply runs in full.
 * The adapter validates ``feature_power`` (finite, non-negative scalar), which the core does
   not.
 * It checks that the core echoes back the configured learning rate, condition, strategy and

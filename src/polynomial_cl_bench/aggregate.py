@@ -169,6 +169,7 @@ def aggregate_algorithm(label: str, records, expected_seeds) -> dict:
         "cpu_time_seconds",
         "training_time_seconds",
         "inference_time_seconds",
+        "feature_construction_seconds",
         "peak_memory_mb",
         "rss_before_run_mb",
         "n_parameters",
@@ -176,7 +177,9 @@ def aggregate_algorithm(label: str, records, expected_seeds) -> dict:
         "replay_memory_bytes_max",
     )
     resources = {
-        k: summarize([r["resources"][k] for r in completed]) for k in resource_keys
+        # .get: records written before a resource existed simply lack the key (unavailable)
+        k: summarize([r["resources"].get(k) for r in completed])
+        for k in resource_keys
     }
     first = (completed or records or [None])[0]
     return {

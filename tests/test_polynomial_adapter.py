@@ -12,7 +12,11 @@ from polynomial_cl.continual import TASK_ORDER
 
 from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms import polynomial as module
-from polynomial_cl_bench.algorithms.polynomial import AdapterError, PolynomialAdapter
+from polynomial_cl_bench.algorithms.polynomial import (
+    CORE_REPORTS_TIMINGS,
+    AdapterError,
+    PolynomialAdapter,
+)
 from polynomial_cl_bench.datasets import array_fingerprint
 from polynomial_cl_bench.provenance import commit_from_direct_url, core_provenance
 
@@ -132,12 +136,13 @@ class PolynomialAdapterTests(unittest.TestCase):
 
     def test_unavailable_resources_are_none_not_zero(self):
         r = self.run_adapter().resources
-        for key in (
-            "training_time_seconds",
-            "inference_time_seconds",
-            "peak_memory_mb",
-        ):
-            self.assertIsNone(r[key])
+        self.assertIsNone(r["peak_memory_mb"])
+        for key in ("training_time_seconds", "inference_time_seconds"):
+            # Known only when the installed core can report its own split of the run.
+            if CORE_REPORTS_TIMINGS:
+                self.assertGreater(r[key], 0)
+            else:
+                self.assertIsNone(r[key])
         self.assertGreater(r["wall_time_seconds_including_evaluation"], 0)
         self.assertEqual(r["n_parameters"], 969 * 10)
 

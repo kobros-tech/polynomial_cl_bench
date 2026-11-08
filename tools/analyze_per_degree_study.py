@@ -1,8 +1,11 @@
 # Copyright (c) 2026 Mohamed Alkobrosli
 # SPDX-License-Identifier: MIT
-"""Analyse the core's per-degree study (``experiments/run_per_degree_study.sh``) -> JSON + tables.
+"""Analyse the core's per-degree study (``experiments/per_degree_lr.py``) -> JSON + tables.
 
-Reads, from ``--results-dir`` (the core's ``results/per_degree``):
+The study's runs are planned by ``tools/core_study_plan.py`` and produced by the
+``paper-results`` workflow.
+
+Reads, from ``--results-dir`` (the study's results, one file per run, plus its logs):
 
 * ``cell_<strategy>_<sampling>.json``   one cell per (strategy, sampling): 18 learning-rate
   vectors, each with validation metrics (selection seeds) and test runs (test seeds), 3 epochs;
@@ -35,7 +38,7 @@ therefore carries newest-experience accuracy so such degenerate winners are visi
 Selection rules come from ``polynomial_cl_bench.selection`` (install this package; the
 rest of the script uses the standard library only). Run:
 
-    python tools/analyze_per_degree_study.py --results-dir ../polynomial_cl_demo/results/per_degree \\
+    python tools/analyze_per_degree_study.py --results-dir core_results/per_degree \\
         --out-json results/analysis/per_degree_analysis.json \\
         --out-md   results/analysis/per_degree_analysis.md \\
         --out-csv  results/analysis/per_degree_candidates.csv

@@ -31,10 +31,13 @@ Known limits of the design
 * **The polynomial core is observed, not controlled.** It trains and evaluates inside one call,
   so the adapter cannot prove from outside that test data is untouched or that future classes
   never compete. Both are checked indirectly (see :doc:`algorithms`).
-* **Polynomial resources.** Separate training and inference time are unavailable, so
-  training and inference seconds are ``null`` for the polynomial algorithm. Wall time includes
-  in-loop evaluation and feature construction, and is therefore not directly comparable to a
-  competitor's training time. Peak memory includes the loaded dataset and is ``null`` off Linux.
+* **Polynomial resources.** The core trains and evaluates in one call. Training and
+  inference seconds are the core's own split of the call and exist only for a core that
+  reports it; for an older core they are ``null``. They are comparable in spirit, not
+  identical in scope, to ER-MLP's. The runner's wall time includes in-loop evaluation and
+  feature construction, and is therefore not directly comparable to a competitor's training
+  time; ``feature_construction_seconds`` shows the part that is construction. Peak memory
+  includes the loaded dataset and is ``null`` off Linux.
 * **Seeds do not vary the data split or the projection.** Confidence intervals describe
   variation due to initialisation, sampling and replay selection only, and with five seeds they
   are wide. No significance tests are computed.

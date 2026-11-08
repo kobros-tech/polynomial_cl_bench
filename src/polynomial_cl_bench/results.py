@@ -80,6 +80,9 @@ _NUMERIC_RESOURCES = (
     "replay_memory_examples_max",
     "replay_memory_bytes_max",
 )
+# Added after the first records were written: validated when present, never required, so
+# older records stay valid.
+_OPTIONAL_NUMERIC_RESOURCES = ("feature_construction_seconds",)
 
 
 class RecordError(ValueError):
@@ -349,6 +352,11 @@ def validate_record(record: dict) -> list:
             problems.append(f"resources.{key} missing (use null for unavailable)")
         elif not _number_or_none(resources[key]):
             problems.append(f"resources.{key} must be null or a finite number >= 0")
+    for key in _OPTIONAL_NUMERIC_RESOURCES:
+        if key in resources and not _number_or_none(resources[key]):
+            problems.append(f"resources.{key} must be null or a finite number >= 0")
+    if not isinstance(resources.get("adapter_execution", {}), (dict, type(None))):
+        problems.append("resources.adapter_execution must be null or an object")
     if resources.get("peak_memory_mb") is not None and not resources.get(
         "peak_memory_scope"
     ):

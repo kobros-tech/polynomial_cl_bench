@@ -127,7 +127,7 @@ A script (``tools/analyze_per_degree_study.py``) reads the study’s result file
 Cost measurement and its limits
 -------------------------------
 
-Time is the wall-clock time of one complete run (five experiences plus in-loop evaluation) as reported by each adapter, identical in definition for both algorithms, measured in one process on one CPU core. The polynomial per-run time excludes the one-time construction of the degree-3 features for the 70,000 images (|numFeatureSeconds| s here), which the ER-MLP does not need. The polynomial study’s own logs record times on a different, slower machine (:math:`t_{\mathrm{log}}`); every comparison against the ER-MLP therefore uses times re-measured here (:math:`t_{\mathrm{here}}`). Parameter counts are those of the full 10-way head (including columns of classes not yet introduced), and the stored memory is identical for all replay methods.
+Time is the wall-clock time of one complete run (five experiences plus in-loop evaluation) as reported by each adapter, identical in definition for both algorithms, measured in one process on one CPU core. The polynomial runs use the core’s lean benchmark mode, which skips only observation-only work (loss passes, per-degree statistics, old-class indicators) and leaves the accuracy matrix unchanged; the study’s own runs, by contrast, keep those diagnostics on. The polynomial per-run time excludes the one-time construction of the degree-3 features for the 70,000 images (|numFeatureSeconds| s here), which the ER-MLP does not need. The polynomial study’s own logs record times on a different, slower machine (:math:`t_{\mathrm{log}}`); every comparison against the ER-MLP therefore uses times re-measured here (:math:`t_{\mathrm{here}}`). Parameter counts are those of the full 10-way head (including columns of classes not yet introduced), and the stored memory is identical for all replay methods.
 
 Results
 =======
@@ -300,7 +300,7 @@ Appendix: Reproducibility
 
 * **Core package** ``polynomial_cl``: commit ``b0b917ee240db7a7ea7d78cb4bf21754e99d554b`` of the checkout supplied for this study, with uncommitted working-tree changes (21 modified files). The benchmark’s imports were updated to the refactored core API (``polynomial_cl.continual``, ``polynomial_cl.data``); the core was not modified. After this change the adapter reproduces the stored seed-3 result of the combined per-degree setting exactly (accuracy 0.7734281931972611, forgetting 0.09086581818480258).
 
-* **Stored study results**: produced by ``experiments/run_per_degree_study.sh`` of the core (selection seeds 0–2, test seeds 3–9).
+* **Study results**: produced by the core’s ``experiments/per_degree_lr.py``, one run per cell (selection seeds 0–2, test seeds 3–9), by the ``paper-results`` workflow of this repository at the core commit pinned in ``pyproject.toml``.
 
 * **Analysis** (wall time is not stored in the result JSON; it is read from the logs and each log line is cross-checked against the JSON run before use):
 

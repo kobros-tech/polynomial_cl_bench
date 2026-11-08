@@ -49,6 +49,22 @@ Continuous integration
 (with ``BENCH_REQUIRE_CORE`` and ``BENCH_REQUIRE_PINNED_CORE``), checks that every command-line
 entry point still loads, and builds this documentation.
 
+Two further workflows, ``paper-results`` and ``benchmark-results``, produce the results the
+paper and the documentation quote (see :doc:`analysis_and_paper`). They run only when started
+by hand.
+
+Updating the pinned core
+------------------------
+
+The core is pinned to a full commit SHA in ``pyproject.toml`` (never a branch). To move the
+pin, merge the change in the core, put the merge commit's full SHA in the dependency line
+(same repository URL) and reinstall (``pip install -e .``). Nothing else needs editing: the
+CI installs from the pin, ``paper-results`` reads it with ``tools/pinned_core.py``, and the
+polynomial adapter detects what the core offers. A core with the lean mode and timings
+(``diagnostics`` and ``timings`` arguments of ``run_condition``) is used in lean mode with its
+timing split; an older one runs as before and reports those timings as ``null``. Results
+obtained with different pins are not mixed: the pin is part of every record.
+
 Building the documentation
 --------------------------
 

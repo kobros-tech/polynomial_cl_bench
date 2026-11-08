@@ -24,6 +24,7 @@ from helpers import fake_mnist_protocol, synthetic_dataset
 from polynomial_cl_bench import results
 from polynomial_cl_bench.runner import AlgorithmEntry, ExperimentSpec, run_experiment
 from polynomial_cl_bench.summarize import summarize_directory
+from polynomial_cl_bench.algorithms.polynomial import CORE_REPORTS_TIMINGS
 
 ER = {
     "algorithm": "er_mlp",
@@ -191,9 +192,13 @@ class PolynomialThroughTheRunner(unittest.TestCase):
             )
             self.assertEqual(rec["status"], "completed", rec["error"])
             self.assertTrue(rec["checks"]["core_reported_cross_check"]["agrees"])
-            self.assertIsNone(
-                rec["resources"]["training_time_seconds"]
-            )  # core cannot separate it
+            training = rec["resources"]["training_time_seconds"]
+            if (
+                CORE_REPORTS_TIMINGS
+            ):  # an older core cannot separate it: null, never zero
+                self.assertGreater(training, 0)
+            else:
+                self.assertIsNone(training)
             self.assertIsNotNone(rec["resources"]["wall_time_seconds"])
 
 
