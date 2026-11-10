@@ -58,7 +58,9 @@ Updating the pinned core
 
 The core is pinned to a full commit SHA in ``pyproject.toml`` (never a branch). To move the
 pin, merge the change in the core, put the merge commit's full SHA in the dependency line
-(same repository URL) and reinstall (``pip install -e .``). Nothing else needs editing: the
+(same repository URL) and reinstall (``pip install -e .``). The SHA is also quoted in prose in ``README.md``,
+``docs/installation.rst``, ``docs/status.rst`` and ``paper/README.rst``; update those too, and
+re-run the tests before changing what ``docs/status.rst`` says was verified. Otherwise the
 CI installs from the pin, ``paper-results`` reads it with ``tools/pinned_core.py``, and the
 polynomial adapter detects what the core offers. A core with the lean mode and timings
 (``diagnostics`` and ``timings`` arguments of ``run_condition``) is used in lean mode with its

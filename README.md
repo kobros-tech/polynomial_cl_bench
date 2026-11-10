@@ -24,7 +24,7 @@ produces numbers and the evidence needed to trust them.
 owns the evaluation and **never re-implements** the polynomial model, features, training or
 replay. The dependency is one-way, `polynomial_cl_bench -> polynomial_cl`, and the core is pinned
 in `pyproject.toml` to a full commit SHA (never a branch), currently
-`4d7e6928e594c7618be6382542b7818a34ef3072`.
+`2e806d7a3437e930256eb49ab7a3ec5e650a1110`.
 
 ## Architecture
 
@@ -85,8 +85,10 @@ reports the comparison as *not publishable* (development mode, untuned configura
 
 `python -m polynomial_cl_bench.tune --grid configs/<algorithm>_grid.json --out ...` runs a grid on
 the validation hold-out only (selection seeds 100 and 101, disjoint from evaluation seeds), records
-every run including failures, and never overwrites a result. **No tuning has been run on real
-MNIST yet.**
+every run including failures, and never overwrites a result. Development-mode tuning has been run on real
+MNIST for both algorithms (30 of 30 runs each); those records carry no core or benchmark commit and
+are not official-eligible. **No official-mode tuning has been run.** The records live in `results/`,
+which is not versioned.
 
 ## Model selection objectives
 
@@ -147,14 +149,15 @@ real-data-verified, reproducibility-verified, publication-ready.
 | --- | --- |
 | Protocol, data verification and loading, plan, polynomial adapter, runner, records, aggregation | Real-data-verified: reference experiment executed on real MNIST; reproduces the core's stored records |
 | Reproducibility check | One seed re-run bit-identical, single-threaded BLAS, same machine |
-| ER-MLP, validation tuning, model selection | Core-verified on synthetic data only; **not run on real MNIST** |
+| ER-MLP, validation tuning, model selection | Run on real MNIST in development mode only (not official-eligible); **not run in official mode** |
 | Tools in `tools/` | Implemented; entry points load; not run |
 | Codabench / OpenML | Not implemented (planned) |
 | Anything publication-ready | **None** |
 
 ## Current limitations
 
-No tuning results exist for real data, so the tuned comparison cannot run; the polynomial core is
+The only tuned comparison is a development-mode run that is reported as not publishable; the
+polynomial core is
 observed through one call, so some checks are indirect; seeds do not vary the data split; no
 significance tests are computed; reproducibility has not been checked across machines; two
 descriptive strings in the configs still name the core's pre-refactor module path (changing the

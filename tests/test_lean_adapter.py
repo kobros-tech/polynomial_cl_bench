@@ -32,13 +32,38 @@ needs_timing_core = unittest.skipUnless(
 
 
 class Spy:
-    def __init__(self):
+    """Records the keyword arguments and forwards to the real ``run_condition``.
+
+    ``legacy_core=True`` stands in for a core that predates the ``diagnostics`` argument. Such
+    a core always ran in full, whereas the installed core's default may be ``False`` (core
+    ``2e806d7`` and later), so the stand-in forces the full run that an older core would do.
+    """
+
+    def __init__(self, legacy_core=False):
         self.kwargs = []
+        self.legacy_core = legacy_core
         self.real = module.run_condition
 
     def __call__(self, *args, **kwargs):
-        self.kwargs.append(kwargs)
+        self.kwargs.append(dict(kwargs))
+        if self.legacy_core and "diagnostics" in _CORE_PARAMETERS_OF_REAL:
+            kwargs["diagnostics"] = True
         return self.real(*args, **kwargs)
+
+
+_CORE_PARAMETERS_OF_REAL = module._CORE_PARAMETERS
+
+
+class FlippedDiagnostics:
+    """A core stand-in whose record reports the opposite diagnostics setting."""
+
+    def __init__(self):
+        self.real = module.run_condition
+
+    def __call__(self, *args, **kwargs):
+        record = self.real(*args, **kwargs)
+        record["diagnostics"] = not kwargs.get("diagnostics", True)
+        return record
 
 
 class LeanAdapterTests(unittest.TestCase):
@@ -79,6 +104,15 @@ class LeanAdapterTests(unittest.TestCase):
             )
             self.assertEqual(lean.extras["core_reported"], full.extras["core_reported"])
 
+    @needs_lean_core
+    def test_a_run_that_used_the_other_diagnostics_setting_is_refused(self):
+        # Cost comparability: lean and full runs differ in time, so the record's flag must
+        # match what was requested, for both settings.
+        for requested in (False, True):
+            with mock.patch.object(module, "run_condition", FlippedDiagnostics()):
+                with self.assertRaisesRegex(module.AdapterError, "diagnostics"):
+                    self.run_adapter(PolynomialAdapter(diagnostics=requested))
+
     def test_diagnostics_are_not_part_of_the_algorithm_identity(self):
         lean, full = PolynomialAdapter(), PolynomialAdapter(diagnostics=True)
         self.assertEqual(lean.describe(), full.describe())
@@ -114,7 +148,7 @@ class LeanAdapterTests(unittest.TestCase):
         json.dumps(self.run_adapter().resources, allow_nan=False)
 
     def test_an_older_core_without_lean_mode_or_timings_still_works(self):
-        spy = Spy()
+        spy = Spy(legacy_core=True)
         with (
             mock.patch.object(module, "CORE_HAS_LEAN_MODE", False),
             mock.patch.object(module, "CORE_REPORTS_TIMINGS", False),

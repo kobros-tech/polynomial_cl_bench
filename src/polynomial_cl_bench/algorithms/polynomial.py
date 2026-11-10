@@ -206,6 +206,18 @@ class PolynomialAdapter:
             **core_options,
         )
         elapsed = time.perf_counter() - started
+        if (
+            CORE_HAS_LEAN_MODE
+            and bool(record.get("diagnostics", True)) != self.diagnostics
+        ):
+            # Diagnostics roughly double a run's time and differ by update rule, so a run
+            # that silently used the other setting would distort the cost comparison with
+            # ER-MLP. The setting is passed explicitly, so this can only fire if a core
+            # ignores or changes it.
+            raise AdapterError(
+                f"core ran with diagnostics={record.get('diagnostics', True)!r}, "
+                f"configured {self.diagnostics!r}"
+            )
         if record["sampling"] != protocol.sampling:
             raise AdapterError(
                 f"core reports sampling {record['sampling']!r}, protocol requires "

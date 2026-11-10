@@ -18,6 +18,12 @@ Does Incremental Polynomial Feature Expansion Help Class-Incremental Learning?
    statements in the appendix describe the environment of the original draft. Do not cite it
    as a source of verified results.
 
+   Since the draft was written the core package has changed in ways that bear on its cost
+   statements: its feature construction was made much faster, and a run's diagnostics (extra,
+   observation-only work that roughly doubles a run's time) are now off by default. The cost
+   comparison below must be regenerated at the pinned core, with the same diagnostics setting
+   and the same treatment of feature construction for both methods, before it is relied on.
+
 .. rubric:: Abstract
 
 Class-incremental learning (CIL) asks a single model to absorb new classes over time without erasing old ones. A recent line of work proposes to grow a model’s capacity *explicitly*: start from a low-degree polynomial feature map, append zero-initialised higher-degree monomials as classes arrive, and protect old knowledge with replay and per-coefficient update rules. We ask whether this works, why, and at what cost. Under one protocol (Split MNIST, five two-class experiences, a fixed 16-dimensional random projection, 200 replay exemplars per class, three epochs, identical experiences and replay exemplars per seed) we compare the polynomial method, with settings chosen on a validation split from |numPolyCandidatesThree| candidate configurations, against an experience-replay MLP (ER-MLP) tuned on |numErCandidates| configurations. The validation-selected polynomial setting reaches |numPolyBestAcc|\ % final accuracy (forgetting |numPolyBestForg|\ %), against |numErBestAcc|\ % (|numErBestForg|\ %) for the validation-selected ER-MLP, and |numErHindAcc|\ % for the ER-MLP picked in hindsight on the test set. The paired accuracy difference is |numPairedERMLPhindsightbAccDiff| points (95% CI |numPairedERMLPhindsightbAccLo| to |numPairedERMLPhindsightbAccHi|) against that strongest ER-MLP, positive in all |numTestSeeds| seeds. Ablations, however, do not support the mechanism the method is built around. Most of the gain over a linear model comes from polynomial *capacity* (|numPolyLinearAcc|\ % for degree 1 versus |numPolyFixedCapAcc|\ % for degree 3 from the start), not from expanding it gradually; class-balanced sampling matters far more than any update rule (median accuracy |numMedianClassBalancedAcc|\ % versus |numMedianShuffledAcc|\ % under shuffled sampling); and per-degree learning rates change class-balanced accuracy by at most |numPerDegreeGainCbMax| points. We also show that “lowest forgetting” and “smallest time” are degenerate objectives on their own (the winners learn almost nothing), and that the best *trade-off* configuration depends on an arbitrary weighting. All claims are limited to one dataset, one projection, one competitor family and seeds that vary only shuffling and replay selection.
@@ -135,7 +141,7 @@ Results
 Best settings by criterion (RQ3)
 --------------------------------
 
-:numref:`tab-criteria` gives the analysis output for the polynomial method. Ranked on validation, the highest-accuracy configuration is ``frozen_old`` with class-balanced sampling and :math:`\eta=[2.5,2.5,10,10]`, at |numPolyBestAcc|\ % accuracy and |numPolyBestForg|\ % forgetting on the test seeds. The lowest-forgetting configuration (``strategy_b``) reaches |numPolyValidationminForgettingForg|\ % forgetting at |numPolyValidationminForgettingAcc|\ % accuracy, but the null-space rules take roughly 2.5–3 times as long as the other rules. The unconstrained smallest-time winner is degenerate: a no-replay model with |numPolyValidationminTimeAcc|\ % accuracy. Low forgetting is also easy to obtain by learning little (:numref:`fig-tradeoffs`\ b), which is why newest-experience accuracy is reported beside it. Within the accuracy floor, the cheapest configuration is plain ``ordinary`` replay with a single rate of 3 (|numPolyValidationFloorminTimeAcc|\ %, |numPolyValidationFloorminTimeForg|\ % forgetting).
+:numref:`tab-criteria` gives the analysis output for the polynomial method. Ranked on validation, the highest-accuracy configuration is ``frozen_old`` with class-balanced sampling and :math:`\eta=[2.5,2.5,10,10]`, at |numPolyBestAcc|\ % accuracy and |numPolyBestForg|\ % forgetting on the test seeds. The lowest-forgetting configuration (``strategy_b``) reaches |numPolyValidationminForgettingForg|\ % forgetting at |numPolyValidationminForgettingAcc|\ % accuracy, but the null-space rules take roughly three times as long as the other rules. The unconstrained smallest-time winner is degenerate: a no-replay model with |numPolyValidationminTimeAcc|\ % accuracy. Low forgetting is also easy to obtain by learning little (:numref:`fig-tradeoffs`\ b), which is why newest-experience accuracy is reported beside it. Within the accuracy floor, the cheapest configuration is plain ``ordinary`` replay with a single rate of 3 (|numPolyValidationFloorminTimeAcc|\ %, |numPolyValidationFloorminTimeForg|\ % forgetting).
 
 The trade-off winner is fragile. Ranked on validation, it is |numSensValidationEqualWeights| for equal weights, accuracy, forgetting and time weighted double, but |numSensValidationTimeIgnored| when time is ignored. Ranked in hindsight on test, it varies across weightings among |numSensTestEqualWeights|, |numSensTestAccuracyX| and |numSensTestTimeIgnored|. We conclude that a “best trade-off” is only meaningful relative to a stated weighting, and that the candidates differ by less than the seed-to-seed spread in accuracy (about 0.3–0.5 points), so they are practically exchangeable. For the remainder we call the validation-selected highest-accuracy setting the *polynomial headline setting*.
 
@@ -238,7 +244,7 @@ Where does the effect come from? (RQ2)
 Training budget (RQ4)
 ---------------------
 
-With ten epochs (:numref:`tab-epochs`, no re-selection) the polynomial setting improves to |numPolyTenAcc|\ % (forgetting |numPolyTenForg|\ %), whereas the ER-MLPs do not improve in accuracy and forget more (for example, forgetting rises from |numErFloorTradeForg|\ % to about 17% for :math:`H{=}256`). The best ER-MLP at ten epochs reaches |numErTenBestAcc|\ %, so the gap of roughly 2.6 points persists. Time grows two- to threefold for both. Because rates were selected for three epochs, a re-tuned ER-MLP might do better at ten; we did not test this.
+With ten epochs (:numref:`tab-epochs`, no re-selection) the polynomial setting improves to |numPolyTenAcc|\ % (forgetting |numPolyTenForg|\ %), whereas the ER-MLPs do not improve in accuracy and forget more (for example, forgetting rises from |numErFloorTradeForg|\ % to about 17% for :math:`H{=}256`). The best ER-MLP at ten epochs reaches |numErTenBestAcc|\ %, so the gap of roughly 2.6 points persists. Time grows about twofold for the polynomial setting and about three- to fourfold for the ER-MLPs (:numref:`tab-epochs`). Because rates were selected for three epochs, a re-tuned ER-MLP might do better at ten; we did not test this.
 
 .. raw:: latex
 
@@ -299,6 +305,12 @@ Appendix: Reproducibility
 =========================
 
 * **Core package** ``polynomial_cl``: commit ``b0b917ee240db7a7ea7d78cb4bf21754e99d554b`` of the checkout supplied for this study, with uncommitted working-tree changes (21 modified files). The benchmark’s imports were updated to the refactored core API (``polynomial_cl.continual``, ``polynomial_cl.data``); the core was not modified. After this change the adapter reproduces the stored seed-3 result of the combined per-degree setting exactly (accuracy 0.7734281931972611, forgetting 0.09086581818480258).
+
+* **Core pin of this revision**: the benchmark now pins core commit
+  ``2e806d7a3437e930256eb49ab7a3ec5e650a1110`` (diagnostics opt-in, whole-call timings). The
+  numbers in this draft have **not** been regenerated at that pin; the learning results of the
+  benchmark's adapter were checked to be bit-identical to those at core ``4d7e692`` on four
+  synthetic configurations, which says nothing about the stored study results.
 
 * **Study results**: produced by the core’s ``experiments/per_degree_lr.py``, one run per cell (selection seeds 0–2, test seeds 3–9), by the ``paper-results`` workflow of this repository at the core commit pinned in ``pyproject.toml``.
 

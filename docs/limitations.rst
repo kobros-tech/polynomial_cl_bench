@@ -28,6 +28,11 @@ Implemented but not yet run on real data
 Known limits of the design
 --------------------------
 
+* **What the time covers.** For both algorithms the runner's wall time spans one
+  ``run_sequence`` call, evaluation included. For the polynomial method, which runs in a fresh
+  process per run, that includes the one-off degree-3 feature construction (reported
+  separately as ``feature_construction_seconds``); ER-MLP has no counterpart. A comparison
+  must state whether it includes it, and must use the same diagnostics setting everywhere.
 * **The polynomial core is observed, not controlled.** It trains and evaluates inside one call,
   so the adapter cannot prove from outside that test data is untouched or that future classes
   never compete. Both are checked indirectly (see :doc:`algorithms`).

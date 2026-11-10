@@ -35,8 +35,9 @@ How these statements were obtained
 Everything below marked as verified was executed for this documentation, on 2026-11-05, in a
 fresh virtual environment (Linux, Python 3.12.3, NumPy 2.5.4) created with
 ``pip install -e ".[dev]"``, so that the core was installed from the pin in ``pyproject.toml``
-(core commit ``4d7e6928e594c7618be6382542b7818a34ef3072``, the merge commit of the core's
-``continual``/``data`` refactor on its ``main``).
+(at that time core commit ``f90eac9``, the merge commit of the core's ``continual``/``data``
+refactor on its ``main``, dated 2026-11-05; the page previously named ``4d7e692`` here, which is
+a later commit, dated 2026-11-08, and cannot have been the pin on 2026-11-05).
 
 .. list-table::
    :header-rows: 1
@@ -183,6 +184,36 @@ row to full printed precision):
      - accuracy 0.7734281931972611, forgetting 0.09086581818480258
 
 These are consistency checks of the integration, not benchmark results.
+
+Re-check against newer core commits (2026-11-10)
+-------------------------------------------------
+
+The suite was re-run after the core moved on, in a separate environment (Linux, Python 3.12.3,
+NumPy 2.5.4, single-threaded BLAS), with the core installed from a local clone at each commit
+and the benchmark installed editable. Synthetic data only: the real-data tests, the
+pinned-install check (``BENCH_REQUIRE_PINNED_CORE=1``) and the reproduction of the stored
+records were not repeated.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Core commit
+     - ``pytest -q`` result
+   * - ``4d7e692`` (lean mode, timing split; diagnostics on by default)
+     - 367 passed, 11 skipped (Sphinx not installed, so the documentation and paper build tests
+       were skipped)
+   * - ``2e806d7`` (diagnostics opt-in, whole-call timings)
+     - 366 passed, 1 failed before the fix below (same environment as above); after the fix and
+       with Sphinx installed, 375 passed, 4 skipped (the three opt-in real-MNIST tests and the
+       pinned-install check)
+
+The one failure was in the test harness, not the adapter: the test that imitates a core without
+the ``diagnostics`` argument still called the new ``run_condition``, whose default changed.
+The imitation now forces the full run an older core would have done. For four configurations
+(``ordinary`` and ``ordinary_no_replay``, each with and without ``feature_power``) the accuracy
+matrices produced through the adapter were bit-identical under ``4d7e692`` and ``2e806d7``.
+The adapter now also raises if the core's record reports a ``diagnostics`` setting other than
+the requested one.
 
 What has not been run
 ---------------------

@@ -72,7 +72,11 @@ explicitly. Consequences:
   ``PolynomialAdapter(diagnostics=True)`` restores the full run for research, and is not part
   of the algorithm's configuration or identity. How a run was executed (core lean mode
   available, diagnostics on or off, features from cache, the core's timing split) is stored
-  in ``resources.adapter_execution``. A core without the lean mode simply runs in full.
+  in ``resources.adapter_execution``. A core without the lean mode simply runs in full. The argument is always passed explicitly, so
+  the result does not depend on the core's default (``True`` up to core ``4d7e692``, ``False``
+  from ``2e806d7``), and the adapter refuses a record whose ``diagnostics`` flag differs from
+  the requested one, because a full run takes roughly twice as long and would distort the
+  cost comparison with ER-MLP.
 * The adapter validates ``feature_power`` (finite, non-negative scalar), which the core does
   not.
 * It checks that the core echoes back the configured learning rate, condition, strategy and

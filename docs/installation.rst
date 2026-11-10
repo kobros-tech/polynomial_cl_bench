@@ -26,7 +26,7 @@ The core dependency is declared in ``pyproject.toml`` as a ``git+https`` URL wit
 
 .. code-block:: text
 
-   polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_core.git@4d7e6928e594c7618be6382542b7818a34ef3072
+   polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_core.git@2e806d7a3437e930256eb49ab7a3ec5e650a1110
 
 That commit is the merge commit, on the core's ``main``, of the refactor that introduced the
 ``polynomial_cl.continual`` and ``polynomial_cl.data`` packages, which this benchmark uses.
