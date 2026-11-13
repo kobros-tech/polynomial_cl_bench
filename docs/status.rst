@@ -215,6 +215,12 @@ matrices produced through the adapter were bit-identical under ``4d7e692`` and `
 The adapter now also raises if the core's record reports a ``diagnostics`` setting other than
 the requested one.
 
+Review of the workflow changes (diagnostics passed explicitly, ``pipefail``, a comparison
+cache keyed by the benchmark commit, validated reuse of stored comparison records) added
+twelve tests (387 passed, 4 skipped in total; each fix was checked to be caught by its test by
+removing it). The workflows themselves have still **not been executed**; these tests check
+their structure and the tools' logic only.
+
 What has not been run
 ---------------------
 

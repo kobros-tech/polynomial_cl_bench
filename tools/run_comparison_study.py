@@ -51,6 +51,7 @@ from polynomial_cl_bench import metrics
 from polynomial_cl_bench.algorithms.er_mlp import ERMLPAdapter
 from polynomial_cl_bench.algorithms.polynomial import PolynomialAdapter
 from polynomial_cl_bench.datasets import load_split_mnist, validation_view
+from polynomial_cl_bench.provenance import benchmark_provenance
 from polynomial_cl_bench.protocol import Protocol
 
 SELECTION_SEEDS = (0, 1, 2)
@@ -148,8 +149,42 @@ class RunStore:
 # ------------------------------------------------------------------------ running
 
 
+def code_identity() -> dict:
+    """Which benchmark code produces the records written by this process."""
+    state = benchmark_provenance()
+    return {"commit": state["commit"], "commit_source": state["commit_source"]}
+
+
+def _normalised(value):
+    return json.loads(json.dumps(value))
+
+
+def reusable(record, spec, protocol_fingerprint, code) -> bool:
+    """May a stored record stand in for running ``spec`` again?
+
+    A record is reused only if it completed (a failed run is retried on resume), was produced
+    for the same spec and protocol, and, when the current benchmark commit is known and clean,
+    by that same commit. A cache or results file from other benchmark code is therefore never
+    mixed in silently. With a dirty or unknown checkout (local development) the code identity
+    cannot be checked, so only the spec and the protocol are.
+    """
+    if record.get("status") != "completed":
+        return False
+    if record.get("protocol_fingerprint") != protocol_fingerprint:
+        return False
+    if _normalised(record.get("spec")) != _normalised(spec):
+        return False
+    if code.get("commit") is not None and code.get("commit_source") in (
+        "pip_vcs_install",
+        "local_git",
+    ):
+        return (record.get("benchmark") or {}).get("commit") == code["commit"]
+    return True
+
+
 class Study:
-    def __init__(self, protocol, dataset, store, log):
+    def __init__(self, protocol, dataset, store, log, code=None):
+        self.code = code if code is not None else code_identity()
         self.base_protocol = protocol
         self.test_data = dataset
         self.val_data = validation_view(dataset, protocol)
@@ -182,10 +217,10 @@ class Study:
 
     def run(self, spec, split, epochs, seed):
         sampling = spec["sampling"]
-        done = self.store.get(spec["label"], split, epochs, sampling, seed)
-        if done is not None:
-            return done
         protocol = self.protocol_for(epochs, sampling)
+        done = self.store.get(spec["label"], split, epochs, sampling, seed)
+        if done is not None and reusable(done, spec, protocol.fingerprint(), self.code):
+            return done
         dataset = self.test_data if split == "test" else self.val_data
         adapter = self.adapter(spec, split)
         record = {
@@ -197,6 +232,7 @@ class Study:
             "sampling": sampling,
             "seed": seed,
             "protocol_fingerprint": protocol.fingerprint(),
+            "benchmark": self.code,
         }
         try:
             result = adapter.run_sequence(dataset, protocol, seed)

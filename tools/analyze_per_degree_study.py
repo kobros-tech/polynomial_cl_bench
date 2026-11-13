@@ -153,6 +153,31 @@ def feature_count(run):
 # --------------------------------------------------------------------------- candidates
 
 
+def study_diagnostics(results_dir: Path):
+    """The diagnostics setting of the study's runs, and whether the files agree on it.
+
+    Diagnostics roughly double a run's time and by different amounts for different update rules,
+    so the times parsed from the logs are comparable only between runs with the same setting.
+    The core's script records it as ``protocol.diagnostics`` from core 2e806d7 on; earlier cores
+    do not record it and always ran in full.
+
+    Returns ``(setting, problem)``: ``setting`` is ``True``, ``False`` or ``None`` (not
+    recorded) and ``problem`` is a message or ``None``.
+    """
+    seen = set()
+    for path in sorted(results_dir.glob("cell_*.json")) + sorted(
+        results_dir.glob("epochs10_*.json")
+    ):
+        value = json.loads(path.read_text()).get("protocol", {}).get("diagnostics")
+        seen.add(None if value is None else bool(value))
+    if len(seen) > 1:
+        return None, (
+            f"the study's files disagree on the diagnostics setting ({sorted(map(str, seen))}); "
+            "their times are not comparable"
+        )
+    return (next(iter(seen)) if seen else None), None
+
+
 def load_candidates(results_dir: Path, problems: list):
     test_log, val_log, duplicates = parse_logs(results_dir / "logs")
     if duplicates:
@@ -581,6 +606,9 @@ def main(argv=None):
     candidates = load_candidates(args.results_dir, problems)
     if not candidates:
         parser.error("no candidates found")
+    diagnostics, problem = study_diagnostics(args.results_dir)
+    if problem:
+        problems.append(problem)
     analysis = analyse(candidates, problems, args.accuracy_floor)
 
     report = {
@@ -592,6 +620,7 @@ def main(argv=None):
         "accuracy (up), forgetting (down) and time (down) over the candidate pool; a convention.",
         "time_source": "wall-clock seconds per complete run parsed from logs/*.log (not stored in the result JSON); "
         "machine-dependent",
+        "diagnostics": diagnostics,
         "problems": problems,
         "analysis": analysis,
         "candidates": candidates,

@@ -18,6 +18,14 @@ on:
         description: "Run the ER-MLP / polynomial comparison study and rebuild the paper"
         type: boolean
         default: true
+      diagnostics:
+        description: >-
+          Run the study with the core's observation-only diagnostics on (the protocol the draft
+          paper describes). They roughly double a run's time, so the study's times are only
+          comparable between runs with the same setting; the analysis refuses mixed settings.
+          Off gives lean runs, the mode the benchmark comparison itself uses.
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -97,9 +105,15 @@ jobs:
           path: core/data/mnist
       - name: ${{ matrix.name }}
         working-directory: core
+        # `shell: bash` makes the step fail when python fails: without it GitHub runs
+        # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
+        shell: bash
+        env:
+          DIAGNOSTICS: ${{ inputs.diagnostics && '--diagnostics' || '' }}
         run: |
+          set -o pipefail
           mkdir -p results/per_degree/logs
-          python -u experiments/per_degree_lr.py ${{ matrix.args }} \
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} $DIAGNOSTICS \
             --output results/per_degree/${{ matrix.output }} \
             2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
       - uses: actions/upload-artifact@v4
@@ -141,9 +155,15 @@ jobs:
           path: core/results/per_degree
       - name: ${{ matrix.name }}
         working-directory: core
+        # `shell: bash` makes the step fail when python fails: without it GitHub runs
+        # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
+        shell: bash
+        env:
+          DIAGNOSTICS: ${{ inputs.diagnostics && '--diagnostics' || '' }}
         run: |
+          set -o pipefail
           mkdir -p results/per_degree/logs
-          python -u experiments/per_degree_lr.py ${{ matrix.args }} \
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} $DIAGNOSTICS \
             --output results/per_degree/${{ matrix.output }} \
             2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
       - uses: actions/upload-artifact@v4
@@ -216,8 +236,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: results/comparison
-          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.run_id }}
-          restore-keys: comparison-${{ needs.plan.outputs.core_sha }}-
+          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-${{ github.run_id }}
+          # Keyed by the benchmark commit as well as the core's: records from other benchmark code
+          # must not resume here (the comparison tool also re-checks each record before reuse).
+          restore-keys: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-
       - name: Run the comparison
         run: |
           python tools/run_comparison_study.py \
@@ -229,7 +251,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: results/comparison
-          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.run_id }}
+          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         with:
           name: comparison

@@ -187,7 +187,48 @@ class WorkflowFileTests(unittest.TestCase):
         text = (WORKFLOWS / "paper-results.yml").read_text()
         self.assertIn("needs.plan.outputs.core_sha", text)
         self.assertIn("experiments/per_degree_lr.py", text)
-        self.assertNotIn(".sh", text.replace("**/*.sh", ""))
+        self.assertNotRegex(text.replace("**/*.sh", ""), r"\.sh\b")  # no shell scripts
+
+    def _steps(self, name):
+        for job_name, job in self.workflows[name]["jobs"].items():
+            for step in job.get("steps", []):
+                yield job_name, step
+
+    def test_a_failing_experiment_fails_its_step_despite_tee(self):
+        # `python ... | tee` takes the exit status of tee unless pipefail is set; GitHub's
+        # default shell for `run` is `bash -e`, which does not set it.
+        for name in ("paper-results.yml", "benchmark-results.yml"):
+            for job, step in self._steps(name):
+                run = step.get("run", "")
+                if "| tee" in run.replace("\\\n", " ") or "|tee" in run:
+                    self.assertEqual(step.get("shell"), "bash", (name, job))
+                    self.assertIn("pipefail", run, (name, job))
+
+    def test_comparison_progress_is_cached_per_benchmark_commit(self):
+        found = 0
+        for job, step in self._steps("paper-results.yml"):
+            if str(step.get("uses", "")).startswith("actions/cache"):
+                key = step["with"]["key"]
+                if "comparison" in key:
+                    found += 1
+                    self.assertIn("github.sha", key, job)
+                    self.assertIn("core_sha", key, job)
+                    if "restore-keys" in step["with"]:
+                        self.assertIn("github.sha", step["with"]["restore-keys"], job)
+        self.assertEqual(found, 2)  # restore and save
+
+    def test_the_study_states_its_diagnostics_setting_explicitly(self):
+        workflow = self.workflows["paper-results.yml"]
+        self.assertIn("diagnostics", workflow[True]["workflow_dispatch"]["inputs"])
+        steps = [
+            (job, step)
+            for job, step in self._steps("paper-results.yml")
+            if "experiments/per_degree_lr.py" in step.get("run", "")
+        ]
+        self.assertEqual({job for job, _ in steps}, {"core-study", "epochs"})
+        for job, step in steps:
+            self.assertIn("--diagnostics", step["env"]["DIAGNOSTICS"], job)
+            self.assertIn("$DIAGNOSTICS", step["run"], job)
 
     def test_every_flag_a_workflow_passes_exists_in_the_tools_help(self):
         pattern = r"python (?:-u )?(tools/\w+\.py|-m polynomial_cl_bench\.\w+)([^\n]*)"
