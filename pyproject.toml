@@ -10,15 +10,15 @@ requires-python = ">=3.9"
 dependencies = [
     "numpy",
     # Pinned to an immutable full commit SHA, never a branch name.
-    # f90eac9 is the merge commit of core PR #5 (the `continual` / `data` refactor) on the core's
-    # `main`; its tree is identical to the earlier PR #5 tip 92f5fde. When the pin is changed, keep
+    # 2e806d7 is the merge commit of core PR #10 (opt-in diagnostics, whole-call timings) on the core's
+    # `main`. When the pin is changed, keep
     # the URL identical (provenance compares it) and check the commit exists on the remote:
-    #   git ls-remote https://github.com/kobros-tech/polynomial_cl_demo.git
-    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_demo.git@f90eac99a7a6793ec93168ab6381cf0586d82199",
+    #   git ls-remote https://github.com/kobros-tech/polynomial_cl_core.git
+    "polynomial-cl @ git+https://github.com/kobros-tech/polynomial_cl_core.git@2e806d7a3437e930256eb49ab7a3ec5e650a1110",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff", "scipy"]
+dev = ["pytest", "ruff", "scipy", "pyyaml"]
 # Documentation build (docs/). The core is a regular dependency, so autodoc can import every module.
 docs = ["sphinx>=7", "furo"]
 

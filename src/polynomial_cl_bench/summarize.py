@@ -104,8 +104,8 @@ def to_markdown(summary: dict) -> str:
             "95% t-interval for the mean. Descriptive statistics only: seeds do not vary the data split."
         ),
         "",
-        "| algorithm | completed / failed / missing | final accuracy | 95% CI | mean forgetting | wall s | train s | infer s | peak MB | parameters |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| algorithm | completed / failed / missing | final accuracy | 95% CI | mean forgetting | wall s | train s | infer s | features s | peak MB | parameters |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for label, a in agg["algorithms"].items():
         m, r = a["metrics"], a["resources"]
@@ -113,7 +113,8 @@ def to_markdown(summary: dict) -> str:
             f"| {label} | {a['n_completed']} / {a['n_failed']} / {a['n_missing']} "
             f"| {_fmt(m['final_accuracy'])} | {_ci(m['final_accuracy'])} | {_fmt(m['mean_forgetting'])} "
             f"| {_fmt(r['wall_time_seconds'], 1)} | {_fmt(r['training_time_seconds'], 1)} "
-            f"| {_fmt(r['inference_time_seconds'], 2)} | {_fmt(r['peak_memory_mb'], 0)} "
+            f"| {_fmt(r['inference_time_seconds'], 2)} "
+            f"| {_fmt(r['feature_construction_seconds'], 2)} | {_fmt(r['peak_memory_mb'], 0)} "
             f"| {_fmt(r['n_parameters'], 0)} |"
         )
     lines += [

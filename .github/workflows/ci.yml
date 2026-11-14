@@ -60,6 +60,8 @@ jobs:
           python tools/run_comparison_study.py --help > /dev/null
           python tools/build_paper_assets.py --help > /dev/null
           python tools/build_paper.py --help > /dev/null
+          python tools/core_study_plan.py --help > /dev/null
+          python tools/pinned_core.py --help > /dev/null
           python tools/paper_rst_assets.py --help > /dev/null
 
   docs:

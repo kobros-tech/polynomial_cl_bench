@@ -1,7 +1,7 @@
 # polynomial_cl_bench
 
 An independent benchmark for continual-learning algorithms. It evaluates the polynomial
-continual-learning method from [polynomial_cl_demo](https://github.com/kobros-tech/polynomial_cl_demo)
+continual-learning method from [polynomial_cl_core](https://github.com/kobros-tech/polynomial_cl_core)
 against competing approaches under one protocol, with a shared experience/replay plan per seed,
 validation-only hyper-parameter selection and provenance-carrying result records.
 
@@ -18,13 +18,13 @@ replay exemplars, the same training budget, hyper-parameters chosen on validatio
 every result tied to the exact code that produced it. The benchmark does not judge the method; it
 produces numbers and the evidence needed to trust them.
 
-## Relationship to polynomial_cl_demo
+## Relationship to polynomial_cl_core
 
-`polynomial_cl_demo` (Python package `polynomial_cl`, "the core") owns the method. This repository
+`polynomial_cl_core` (Python package `polynomial_cl`, "the core") owns the method. This repository
 owns the evaluation and **never re-implements** the polynomial model, features, training or
 replay. The dependency is one-way, `polynomial_cl_bench -> polynomial_cl`, and the core is pinned
 in `pyproject.toml` to a full commit SHA (never a branch), currently
-`f90eac99a7a6793ec93168ab6381cf0586d82199`.
+`2e806d7a3437e930256eb49ab7a3ec5e650a1110`.
 
 ## Architecture
 
@@ -85,8 +85,10 @@ reports the comparison as *not publishable* (development mode, untuned configura
 
 `python -m polynomial_cl_bench.tune --grid configs/<algorithm>_grid.json --out ...` runs a grid on
 the validation hold-out only (selection seeds 100 and 101, disjoint from evaluation seeds), records
-every run including failures, and never overwrites a result. **No tuning has been run on real
-MNIST yet.**
+every run including failures, and never overwrites a result. Development-mode tuning has been run on real
+MNIST for both algorithms (30 of 30 runs each); those records carry no core or benchmark commit and
+are not official-eligible. **No official-mode tuning has been run.** The records live in `results/`,
+which is not versioned.
 
 ## Model selection objectives
 
@@ -121,6 +123,14 @@ sphinx-build -W --keep-going -b latex docs docs/_build/latex && make -C docs/_bu
 
 CI builds all three with warnings as errors.
 
+## Producing the results
+
+The results the paper and the documentation quote are produced by two GitHub workflows started by
+hand, `paper-results` (the core's per-degree study as independent parallel jobs, then the
+analysis, the comparison study and the regenerated paper assets) and `benchmark-results` (the
+runner pipeline: tuning, tuned comparison, reproducibility check). They commit nothing; results
+are uploaded as artifacts. See `docs/analysis_and_paper.rst`.
+
 ## Research paper
 
 `paper/index.rst` is the canonical source of a **draft** manuscript (reStructuredText, built with
@@ -139,14 +149,15 @@ real-data-verified, reproducibility-verified, publication-ready.
 | --- | --- |
 | Protocol, data verification and loading, plan, polynomial adapter, runner, records, aggregation | Real-data-verified: reference experiment executed on real MNIST; reproduces the core's stored records |
 | Reproducibility check | One seed re-run bit-identical, single-threaded BLAS, same machine |
-| ER-MLP, validation tuning, model selection | Core-verified on synthetic data only; **not run on real MNIST** |
+| ER-MLP, validation tuning, model selection | Run on real MNIST in development mode only (not official-eligible); **not run in official mode** |
 | Tools in `tools/` | Implemented; entry points load; not run |
 | Codabench / OpenML | Not implemented (planned) |
 | Anything publication-ready | **None** |
 
 ## Current limitations
 
-No tuning results exist for real data, so the tuned comparison cannot run; the polynomial core is
+The only tuned comparison is a development-mode run that is reported as not publishable; the
+polynomial core is
 observed through one call, so some checks are indirect; seeds do not vary the data split; no
 significance tests are computed; reproducibility has not been checked across machines; two
 descriptive strings in the configs still name the core's pre-refactor module path (changing the

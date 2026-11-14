@@ -6,7 +6,7 @@ Responsibilities
 
 The two repositories have separate jobs and must stay independent projects.
 
-``polynomial_cl_demo`` (Python package ``polynomial_cl``, "the core")
+``polynomial_cl_core`` (Python package ``polynomial_cl``, "the core")
    Owns the polynomial continual-learning *method*: polynomial feature construction and
    expansion, zero-initialisation of new parameters, the polynomial models, degree-specific
    learning rates, training, continual-learning strategies, replay and sampling mechanisms,

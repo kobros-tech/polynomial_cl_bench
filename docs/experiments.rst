@@ -23,9 +23,10 @@ Every step is a separate command; nothing is re-run by a later step.
    # 4. validate and aggregate (also done at the end of step 2)
    $ python -m polynomial_cl_bench.summarize --dir results/tuned_comparison
 
-Until tuning has been run on real MNIST, ``experiment_tuned_comparison.json`` cannot be used:
-its tuning-result files do not exist. ``experiment_polynomial_reference.json`` is the only
-experiment that currently runs (see :doc:`quickstart`).
+``experiment_tuned_comparison.json`` needs tuning-result files, which are not versioned. A
+development-mode run of it exists (see :doc:`status`) but is reported as not publishable; an
+``official`` run needs official-mode tuning, which has not been run.
+``experiment_polynomial_reference.json`` needs no tuning (see :doc:`quickstart`).
 
 Experiment specification
 ------------------------
@@ -99,9 +100,11 @@ Measured by the runner around ``run_sequence``, identically for every algorithm:
 CPU time, and peak resident set size *during the run* (Linux: the kernel's peak counter is reset
 just before the run; elsewhere ``null``). Peak memory is an absolute RSS and includes the loaded
 dataset, so ``rss_before_run_mb`` is stored beside it; with process isolation the baseline is
-the same for every algorithm. Training time, inference time and parameter count are
-adapter-reported, and are ``null`` for the polynomial core, which cannot separate them. Wall
-time includes in-loop evaluation and, for the polynomial adapter, feature construction.
+the same for every algorithm. Training time, inference time, parameter count and (for the
+polynomial adapter) ``feature_construction_seconds`` are adapter-reported. The polynomial
+adapter reports training and inference time only when the installed core can split its run,
+and ``null`` otherwise (see :doc:`algorithms`). Wall time includes in-loop evaluation and, for
+the polynomial adapter, feature construction.
 
 Statistics
 ----------

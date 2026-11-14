@@ -30,6 +30,7 @@ from helpers import PROTOCOL_PATH, fake_mnist_protocol
 from polynomial_cl_bench import provenance, results
 from polynomial_cl_bench.runner import AlgorithmEntry, ExperimentSpec, run_experiment
 from polynomial_cl_bench.summarize import summarize_directory
+from polynomial_cl_bench.algorithms.polynomial import CORE_REPORTS_TIMINGS
 
 try:
     import polynomial_cl.continual as core_continual
@@ -155,8 +156,12 @@ class RealCoreThroughTheRunner(unittest.TestCase):
             self.assertEqual(recorded["commit"], core["commit"])
             self.assertEqual(recorded["version"], core["version"])
             self.assertTrue(record["checks"]["core_reported_cross_check"]["agrees"])
-            # The core cannot separate training from inference time: null, never zero.
-            self.assertIsNone(record["resources"]["training_time_seconds"])
+            # Null (never zero) when the installed core cannot separate training time.
+            training = record["resources"]["training_time_seconds"]
+            if CORE_REPORTS_TIMINGS:
+                self.assertGreater(training, 0)
+            else:
+                self.assertIsNone(training)
             self.assertEqual(record["dataset"]["evaluation_split"], "test")
 
     def test_algorithms_share_the_plan_and_dataset_at_each_seed(self):

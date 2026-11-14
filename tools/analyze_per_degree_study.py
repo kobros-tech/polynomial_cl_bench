@@ -1,8 +1,11 @@
 # Copyright (c) 2026 Mohamed Alkobrosli
 # SPDX-License-Identifier: MIT
-"""Analyse the core's per-degree study (``experiments/run_per_degree_study.sh``) -> JSON + tables.
+"""Analyse the core's per-degree study (``experiments/per_degree_lr.py``) -> JSON + tables.
 
-Reads, from ``--results-dir`` (the core's ``results/per_degree``):
+The study's runs are planned by ``tools/core_study_plan.py`` and produced by the
+``paper-results`` workflow.
+
+Reads, from ``--results-dir`` (the study's results, one file per run, plus its logs):
 
 * ``cell_<strategy>_<sampling>.json``   one cell per (strategy, sampling): 18 learning-rate
   vectors, each with validation metrics (selection seeds) and test runs (test seeds), 3 epochs;
@@ -35,7 +38,7 @@ therefore carries newest-experience accuracy so such degenerate winners are visi
 Selection rules come from ``polynomial_cl_bench.selection`` (install this package; the
 rest of the script uses the standard library only). Run:
 
-    python tools/analyze_per_degree_study.py --results-dir ../polynomial_cl_demo/results/per_degree \\
+    python tools/analyze_per_degree_study.py --results-dir core_results/per_degree \\
         --out-json results/analysis/per_degree_analysis.json \\
         --out-md   results/analysis/per_degree_analysis.md \\
         --out-csv  results/analysis/per_degree_candidates.csv
@@ -148,6 +151,31 @@ def feature_count(run):
 
 
 # --------------------------------------------------------------------------- candidates
+
+
+def study_diagnostics(results_dir: Path):
+    """The diagnostics setting of the study's runs, and whether the files agree on it.
+
+    Diagnostics roughly double a run's time and by different amounts for different update rules,
+    so the times parsed from the logs are comparable only between runs with the same setting.
+    The core's script records it as ``protocol.diagnostics`` from core 2e806d7 on; earlier cores
+    do not record it and always ran in full.
+
+    Returns ``(setting, problem)``: ``setting`` is ``True``, ``False`` or ``None`` (not
+    recorded) and ``problem`` is a message or ``None``.
+    """
+    seen = set()
+    for path in sorted(results_dir.glob("cell_*.json")) + sorted(
+        results_dir.glob("epochs10_*.json")
+    ):
+        value = json.loads(path.read_text()).get("protocol", {}).get("diagnostics")
+        seen.add(None if value is None else bool(value))
+    if len(seen) > 1:
+        return None, (
+            f"the study's files disagree on the diagnostics setting ({sorted(map(str, seen))}); "
+            "their times are not comparable"
+        )
+    return (next(iter(seen)) if seen else None), None
 
 
 def load_candidates(results_dir: Path, problems: list):
@@ -578,6 +606,9 @@ def main(argv=None):
     candidates = load_candidates(args.results_dir, problems)
     if not candidates:
         parser.error("no candidates found")
+    diagnostics, problem = study_diagnostics(args.results_dir)
+    if problem:
+        problems.append(problem)
     analysis = analyse(candidates, problems, args.accuracy_floor)
 
     report = {
@@ -589,6 +620,7 @@ def main(argv=None):
         "accuracy (up), forgetting (down) and time (down) over the candidate pool; a convention.",
         "time_source": "wall-clock seconds per complete run parsed from logs/*.log (not stored in the result JSON); "
         "machine-dependent",
+        "diagnostics": diagnostics,
         "problems": problems,
         "analysis": analysis,
         "candidates": candidates,

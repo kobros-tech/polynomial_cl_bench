@@ -1,0 +1,137 @@
+name: benchmark-results
+
+# Produces the results the documentation quotes from the benchmark's own runner pipeline
+# (docs/experiments.rst): validation tuning of both algorithms, the tuned comparison with its
+# reproducibility check, and the polynomial reference experiment. Run it by hand; it is not part
+# of the CI that runs on every push. Results are uploaded as artifacts, nothing is committed.
+#
+# The core is installed from the commit pinned in pyproject.toml, as a user would, and the
+# runs are single-threaded so that the exact-equality reproducibility check is meaningful.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  BENCH_REQUIRE_CORE: "1"
+  BENCH_REQUIRE_PINNED_CORE: "1"
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - run: python -c "from pathlib import Path; from polynomial_cl.data.mnist import load_mnist; load_mnist(Path('data/mnist'))"
+      - run: python -m polynomial_cl_bench.verify_data --data-dir data/mnist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist/*.gz
+          if-no-files-found: error
+
+  tune:
+    # Validation-only tuning, one job per algorithm.
+    needs: data
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: er_mlp, grid: configs/er_mlp_grid.json}
+          - {name: polynomial, grid: configs/polynomial_grid.json}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist
+      - name: Tune ${{ matrix.name }}
+        run: |
+          python -m polynomial_cl_bench.tune --grid ${{ matrix.grid }} \
+            --data-dir data/mnist --mode official \
+            --out results/tuning_${{ matrix.name }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tuning-${{ matrix.name }}
+          path: results/tuning_${{ matrix.name }}.json
+          if-no-files-found: error
+
+  tuned-comparison:
+    # The intended comparison, in official mode, with the reproducibility check.
+    needs: tune
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tuning-*
+          merge-multiple: true
+          path: results
+      - name: Run the tuned comparison
+        run: |
+          python -m polynomial_cl_bench.runner \
+            --spec configs/experiment_tuned_comparison.json \
+            --data-dir data/mnist --out results/tuned_comparison --reproduce-check
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          python -m polynomial_cl_bench.summarize --dir results/tuned_comparison
+          cat results/tuned_comparison/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: tuned-comparison
+          path: results/tuned_comparison
+          if-no-files-found: error
+
+  reference:
+    # The untuned polynomial reference experiment of the quickstart.
+    needs: data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist
+      - run: |
+          python -m polynomial_cl_bench.runner \
+            --spec configs/experiment_polynomial_reference.json \
+            --data-dir data/mnist --out results/polynomial_reference --reproduce-check
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: polynomial-reference
+          path: results/polynomial_reference
+          if-no-files-found: error

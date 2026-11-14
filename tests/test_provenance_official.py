@@ -18,8 +18,8 @@ from unittest import mock
 from polynomial_cl_bench import provenance as prov
 from polynomial_cl_bench.provenance import ProvenanceError, enforce_run_mode
 
-PIN_URL = "https://github.com/kobros-tech/polynomial_cl_demo.git"
-OTHER_URL = "https://github.com/someone-else/polynomial_cl_demo.git"
+PIN_URL = "https://github.com/kobros-tech/polynomial_cl_core.git"
+OTHER_URL = "https://github.com/someone-else/polynomial_cl_core.git"
 PIN = "9" * 40
 
 
@@ -109,16 +109,16 @@ def local_url(directory):
 class UrlNormalisation(unittest.TestCase):
     def test_equivalent_forms_compare_equal(self):
         forms = [
-            "https://github.com/kobros-tech/polynomial_cl_demo.git",
-            "https://github.com/kobros-tech/polynomial_cl_demo",
-            "git+https://github.com/kobros-tech/polynomial_cl_demo.git",
-            "https://GitHub.com/kobros-tech/polynomial_cl_demo/",
-            "git@github.com:kobros-tech/polynomial_cl_demo.git",
-            "ssh://git@github.com/kobros-tech/polynomial_cl_demo.git",
+            "https://github.com/kobros-tech/polynomial_cl_core.git",
+            "https://github.com/kobros-tech/polynomial_cl_core",
+            "git+https://github.com/kobros-tech/polynomial_cl_core.git",
+            "https://GitHub.com/kobros-tech/polynomial_cl_core/",
+            "git@github.com:kobros-tech/polynomial_cl_core.git",
+            "ssh://git@github.com/kobros-tech/polynomial_cl_core.git",
         ]
         self.assertEqual(
             {prov.normalize_remote_url(f) for f in forms},
-            {"github.com/kobros-tech/polynomial_cl_demo"},
+            {"github.com/kobros-tech/polynomial_cl_core"},
         )
 
     def test_different_repositories_do_not_compare_equal(self):
@@ -141,7 +141,7 @@ class CorePipVcs(unittest.TestCase):
 
     def test_equivalent_url_spelling_is_accepted(self):
         info = core_info(
-            pip_url(url="https://github.com/kobros-tech/polynomial_cl_demo")
+            pip_url(url="https://github.com/kobros-tech/polynomial_cl_core")
         )
         self.assertEqual(info["official_problems"], [])
 

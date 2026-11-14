@@ -1,0 +1,294 @@
+name: paper-results
+
+# Produces every result the paper and the documentation quote, from the core's study through the
+# regenerated paper assets. Run it by hand (Actions -> paper-results -> Run workflow); it is
+# deliberately not part of the CI that runs on every push.
+#
+# The core is checked out at the commit pinned in pyproject.toml, so the study runs against the
+# same core the benchmark installs. The study is a set of independent runs of the core's
+# experiments/per_degree_lr.py (tools/core_study_plan.py lists them), one job each.
+#
+# Nothing is committed: the results and the regenerated paper assets are uploaded as artifacts
+# for review. Copy paper-assets into paper/ in a pull request when they are accepted.
+
+on:
+  workflow_dispatch:
+    inputs:
+      comparison:
+        description: "Run the ER-MLP / polynomial comparison study and rebuild the paper"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  # Single-threaded BLAS: wall times of different jobs are comparable and runs are reproducible.
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      core_repo: ${{ steps.pin.outputs.core_repo }}
+      core_sha: ${{ steps.pin.outputs.core_sha }}
+      study: ${{ steps.matrix.outputs.study }}
+      epochs: ${{ steps.matrix.outputs.epochs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: pin
+        run: python tools/pinned_core.py >> "$GITHUB_OUTPUT"
+      - id: matrix
+        run: |
+          echo "study=$(python tools/core_study_plan.py matrix --stage study)" >> "$GITHUB_OUTPUT"
+          echo "epochs=$(python tools/core_study_plan.py matrix --stage epochs)" >> "$GITHUB_OUTPUT"
+
+  data:
+    # One verified copy of MNIST for every job below.
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the benchmark and the pinned core
+        run: python -m pip install -e .
+      - name: Download MNIST
+        run: |
+          python -c "from pathlib import Path; from polynomial_cl.data.mnist import load_mnist; load_mnist(Path('data/mnist'))"
+      - name: Check the archives against the protocol's sha256 hashes
+        run: python -m polynomial_cl_bench.verify_data --data-dir data/mnist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist/*.gz
+          if-no-files-found: error
+
+  core-study:
+    # The sampling comparison and the per-degree selection of each (strategy, sampling) cell.
+    needs: [plan, data]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.study) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.plan.outputs.core_repo }}
+          ref: ${{ needs.plan.outputs.core_sha }}
+          path: core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: core/pyproject.toml
+      - run: python -m pip install ./core
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: core/data/mnist
+      - name: ${{ matrix.name }}
+        working-directory: core
+        # `shell: bash` makes the step fail when python fails: without it GitHub runs
+        # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results/per_degree/logs
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} --diagnostics \
+            --output results/per_degree/${{ matrix.output }} \
+            2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-study-${{ matrix.name }}
+          path: |
+            core/results/per_degree/${{ matrix.output }}
+            core/results/per_degree/logs/${{ matrix.name }}.log
+          if-no-files-found: error
+
+  epochs:
+    # Re-runs each strategy's shared and selected vectors at 10 epochs; reads every finished cell.
+    needs: [plan, data, core-study]
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.epochs) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.plan.outputs.core_repo }}
+          ref: ${{ needs.plan.outputs.core_sha }}
+          path: core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: core/pyproject.toml
+      - run: python -m pip install ./core
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: core/data/mnist
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: core-study-*
+          merge-multiple: true
+          path: core/results/per_degree
+      - name: ${{ matrix.name }}
+        working-directory: core
+        # `shell: bash` makes the step fail when python fails: without it GitHub runs
+        # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p results/per_degree/logs
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} --diagnostics \
+            --output results/per_degree/${{ matrix.output }} \
+            2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-study-${{ matrix.name }}
+          path: |
+            core/results/per_degree/${{ matrix.output }}
+            core/results/per_degree/logs/${{ matrix.name }}.log
+          if-no-files-found: error
+
+  analysis:
+    # Best settings by criterion; reads wall time from the study logs.
+    needs: [core-study, epochs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: core-study-*
+          merge-multiple: true
+          path: core_results/per_degree
+      - name: Analyse the study
+        run: |
+          python tools/analyze_per_degree_study.py \
+            --results-dir core_results/per_degree \
+            --out-json results/analysis/per_degree_analysis.json \
+            --out-md results/analysis/per_degree_analysis.md \
+            --out-csv results/analysis/per_degree_candidates.csv
+          cat results/analysis/per_degree_analysis.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analysis
+          path: results/analysis
+          if-no-files-found: error
+
+  comparison:
+    # Re-runs the selected polynomial settings and the ER-MLP grid under one protocol on one
+    # machine. Resumable: progress is cached, so a run that hits the time limit continues when
+    # this workflow is started again.
+    if: ${{ inputs.comparison }}
+    needs: [plan, data, analysis]
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          name: mnist
+          path: data/mnist
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: core-study-*
+          merge-multiple: true
+          path: core_results/per_degree
+      - uses: actions/download-artifact@v4
+        with:
+          name: analysis
+          path: results/analysis
+      - name: Restore earlier progress
+        uses: actions/cache/restore@v4
+        with:
+          path: results/comparison
+          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-${{ github.run_id }}
+          # Keyed by the benchmark commit as well as the core's: records from other benchmark code
+          # must not resume here (the comparison tool also re-checks each record before reuse).
+          restore-keys: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-
+      - name: Run the comparison
+        run: |
+          python tools/run_comparison_study.py \
+            --analysis results/analysis/per_degree_analysis.json \
+            --core-results core_results/per_degree \
+            --out-dir results/comparison
+      - name: Save progress
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: results/comparison
+          key: comparison-${{ needs.plan.outputs.core_sha }}-${{ github.sha }}-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: comparison
+          path: results/comparison
+          if-no-files-found: error
+
+  paper:
+    # Tables, figures and number macros from the results above, then the three paper formats.
+    if: ${{ inputs.comparison }}
+    needs: [analysis, comparison]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the TeX toolchain, pandoc and poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra \
+            texlive-fonts-recommended pandoc poppler-utils
+      - run: python -m pip install -e ".[docs]"
+      - uses: actions/download-artifact@v4
+        with:
+          name: analysis
+          path: results/analysis
+      - uses: actions/download-artifact@v4
+        with:
+          name: comparison
+          path: results/comparison
+      - name: Regenerate the paper assets
+        run: |
+          python tools/build_paper_assets.py \
+            --analysis results/analysis/per_degree_analysis.json \
+            --comparison results/comparison --out paper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paper-assets
+          path: |
+            paper/generated
+            paper/figures/*.pdf
+          if-no-files-found: error
+      - name: Build HTML, PDF and Word from the regenerated assets
+        run: python tools/build_paper.py all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paper-build
+          path: |
+            paper/_build/html
+            paper/_build/latex/paper.pdf
+            paper/_build/docx/paper.docx

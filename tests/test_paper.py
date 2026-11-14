@@ -272,7 +272,7 @@ def test_no_hand_typed_result_was_added_during_migration():
     tex = re.sub(r"\[leftmargin=[^\]]*\]", "", tex)  # a layout length, not a result
     tex = tex.replace("\\%", "%")
     assert _prose_figures(rst) == _prose_figures(tex)
-    assert len(_prose_figures(rst)) == 13
+    assert len(_prose_figures(rst)) == 12
 
 
 # ------------------------------------------------------------------ HTML build
