@@ -250,3 +250,7 @@ publication blocker when any of these differs or was not recorded. Tuning result
 before this check existed lack the budget and validation-split fields, so a comparison built
 from them is blocked until they are regenerated. The development-mode records in
 ``results/`` are in that position; they are also not official-eligible.
+
+The ``diagnostics`` input of ``paper-results`` was removed: the study always passes the core's
+``--diagnostics``, so the paper's statement that the study keeps diagnostics on cannot be made
+false by a manual run. The analysis still reports a study whose files disagree on the setting.

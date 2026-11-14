@@ -24,21 +24,21 @@ commits anything: the results are uploaded as artifacts for review.
    the 12 (strategy, sampling) cells, and one 10-epoch re-run per strategy of the cells'
    shared and selected rate vectors. Each run is its own job, so the study takes as long as
    its slowest cell, not the sum of all cells. The script's defaults apply (selection seeds
-   0-2, test seeds 3-9, three epochs per experience), except that the diagnostics setting is
-   always passed explicitly: the ``diagnostics`` input (default on, the protocol the draft
-   paper describes) adds the core script's ``--diagnostics``. The core's own default is off
-   from core ``2e806d7`` on and was on before, so leaving it implicit would silently change the
-   regime when the pin moves. Diagnostics roughly double a run's time, by different amounts
-   for different update rules, so the study's times are comparable only between runs with the
-   same setting; the analysis records the setting (``diagnostics`` in its JSON) and reports a
-   study whose files disagree. A step fails when its experiment fails (``shell: bash`` sets
-   ``pipefail``; the ``| tee`` that writes the log would otherwise hide the exit status). The
-   ``analysis`` job then runs step 1 below on the collected files, ``comparison`` runs step 2,
-   and ``paper`` runs step 3 and builds the paper. The comparison is resumable across workflow
-   runs: its progress is cached under a key made of the core commit *and* the benchmark commit,
-   so it is never restored into a run of different benchmark code, and the tool reuses a stored
-   record only if it completed, was run for the same spec and protocol, and (for a clean
-   checkout) was written by the same benchmark commit; failed runs are retried. Artifacts:
+   0-2, test seeds 3-9, three epochs per experience), except that the core's ``--diagnostics``
+   is always passed, with no switch: the paper describes the full-diagnostics study, and the
+   core's own default is off from core ``2e806d7`` on (it was on before), so leaving it implicit
+   would silently change the regime when the pin moves. Diagnostics roughly double a run's
+   time, by different amounts for different update rules, so the study's times are comparable
+   only between runs with the same setting; the analysis records the setting (``diagnostics``
+   in its JSON) and reports a study whose files disagree. A step fails when its experiment
+   fails (``shell: bash`` sets ``pipefail``; the ``| tee`` that writes the log would otherwise
+   hide the exit status). The ``analysis`` job then runs step 1 below on the collected files,
+   ``comparison`` runs step 2, and ``paper`` runs step 3 and builds the paper. The comparison
+   is resumable across workflow runs: its progress is cached under a key made of the core
+   commit *and* the benchmark commit, so it is never restored into a run of different
+   benchmark code, and the tool reuses a stored record only if it completed, was run for the
+   same spec and protocol, and (for a clean checkout) was written by the same benchmark
+   commit; failed runs are retried. Artifacts:
    ``analysis``, ``comparison``, ``paper-assets`` (``paper/generated`` and the figure PDFs, to
    be copied into ``paper/`` in a pull request once accepted) and ``paper-build``.
 

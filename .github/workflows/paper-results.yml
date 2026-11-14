@@ -18,14 +18,6 @@ on:
         description: "Run the ER-MLP / polynomial comparison study and rebuild the paper"
         type: boolean
         default: true
-      diagnostics:
-        description: >-
-          Run the study with the core's observation-only diagnostics on (the protocol the draft
-          paper describes). They roughly double a run's time, so the study's times are only
-          comparable between runs with the same setting; the analysis refuses mixed settings.
-          Off gives lean runs, the mode the benchmark comparison itself uses.
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -108,12 +100,10 @@ jobs:
         # `shell: bash` makes the step fail when python fails: without it GitHub runs
         # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
         shell: bash
-        env:
-          DIAGNOSTICS: ${{ inputs.diagnostics && '--diagnostics' || '' }}
         run: |
           set -o pipefail
           mkdir -p results/per_degree/logs
-          python -u experiments/per_degree_lr.py ${{ matrix.args }} $DIAGNOSTICS \
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} --diagnostics \
             --output results/per_degree/${{ matrix.output }} \
             2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
       - uses: actions/upload-artifact@v4
@@ -158,12 +148,10 @@ jobs:
         # `shell: bash` makes the step fail when python fails: without it GitHub runs
         # `bash -e`, whose pipeline status is that of `tee`, so a crashed experiment would pass.
         shell: bash
-        env:
-          DIAGNOSTICS: ${{ inputs.diagnostics && '--diagnostics' || '' }}
         run: |
           set -o pipefail
           mkdir -p results/per_degree/logs
-          python -u experiments/per_degree_lr.py ${{ matrix.args }} $DIAGNOSTICS \
+          python -u experiments/per_degree_lr.py ${{ matrix.args }} --diagnostics \
             --output results/per_degree/${{ matrix.output }} \
             2>&1 | tee results/per_degree/logs/${{ matrix.name }}.log
       - uses: actions/upload-artifact@v4

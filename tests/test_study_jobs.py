@@ -219,7 +219,8 @@ class WorkflowFileTests(unittest.TestCase):
 
     def test_the_study_states_its_diagnostics_setting_explicitly(self):
         workflow = self.workflows["paper-results.yml"]
-        self.assertIn("diagnostics", workflow[True]["workflow_dispatch"]["inputs"])
+        # No input: the paper describes the full-diagnostics study, so it cannot be switched off.
+        self.assertNotIn("diagnostics", workflow[True]["workflow_dispatch"]["inputs"])
         steps = [
             (job, step)
             for job, step in self._steps("paper-results.yml")
@@ -227,8 +228,7 @@ class WorkflowFileTests(unittest.TestCase):
         ]
         self.assertEqual({job for job, _ in steps}, {"core-study", "epochs"})
         for job, step in steps:
-            self.assertIn("--diagnostics", step["env"]["DIAGNOSTICS"], job)
-            self.assertIn("$DIAGNOSTICS", step["run"], job)
+            self.assertIn("--diagnostics", step["run"], job)
 
     def test_every_flag_a_workflow_passes_exists_in_the_tools_help(self):
         pattern = r"python (?:-u )?(tools/\w+\.py|-m polynomial_cl_bench\.\w+)([^\n]*)"
