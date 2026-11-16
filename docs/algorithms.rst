@@ -81,6 +81,20 @@ explicitly. Consequences:
   not.
 * It checks that the core echoes back the configured learning rate, condition, strategy and
   sampling.
+* **Degree control** (optional key ``degree_control_factors``, one factor in [0, 1] for each of
+  the four degree groups; the effective rate of degree ``d`` is ``learning_rate[d] *
+  factors[d]``, and 0 freezes that degree). It needs a core whose ``run_condition`` has the
+  ``degree_control_factors`` argument; with an older core the adapter refuses a real control
+  before any training and still runs every configuration without one. The adapter rejects
+  anything that is not four finite real numbers in [0, 1], and a real control together with
+  ``feature_power > 0`` (the core refuses that too). An all-ones control is the identity: it is
+  stored as no control, so run identity, records and fingerprints are exactly those of an
+  uncontrolled run (the accuracy matrices are bit-identical). The key appears in the
+  configuration and the run record only when a control is active, and the adapter checks that
+  the core echoes the factors and the effective degree rates. With a control the core always
+  runs in per-degree mode and reports one rate per degree, even for a scalar configured rate;
+  the adapter accounts for that. Whether a control helps is a research question, not an
+  assumption of the adapter: see :doc:`research_questions`.
 
 **Configurations.** Two configurations are shipped, both in ``configs/``. Neither is claimed
 to be optimal.

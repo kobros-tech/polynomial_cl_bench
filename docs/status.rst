@@ -221,15 +221,56 @@ twelve tests (387 passed, 4 skipped in total; each fix was checked to be caught 
 removing it). The workflows themselves have still **not been executed**; these tests check
 their structure and the tools' logic only.
 
+Official-mode verification at the pinned core (2026-11-15)
+-----------------------------------------------------------
+
+Benchmark commit ``b8ae54f`` (a clean shallow clone), core ``2e806d7`` installed from GitHub
+(provenance reports ``matches_pin: true`` and the pin confirmed against the remote), Linux,
+Python 3.12, single-threaded BLAS, one CPU. The commands are those of the ``benchmark-results``
+jobs, run by hand; the workflow itself was **not** run, so there is no workflow artifact and the
+times are those of this machine.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - Check
+     - Result
+   * - MNIST archives
+     - All four sha256 hashes match the protocol (``verify_data``).
+   * - Test suite, real pinned core required, slow real-data tests on
+     - 391 passed, 0 skipped (before the degree-control adapter support below).
+   * - Real-data reference values
+     - Reproduce the core's stored records within 1e-6 at ``2e806d7`` (see Reference values).
+   * - Official tuning, polynomial
+     - 30 of 30 runs; selected ``learning_rate=1, feature_power=0.5``.
+   * - Official tuning, ER-MLP
+     - 30 of 30 runs; selected ``hidden=[256], learning_rate=0.3``.
+   * - Tuned comparison (official mode)
+     - Integrity passed, publishable; exact-equality reproducibility re-runs matched for both
+       algorithms. Polynomial 0.7767 ± 0.0032, ER-MLP 0.7611 ± 0.0049; paired difference
+       +0.0156 (95% interval [0.0098, 0.0214]), polynomial higher in 5 of 5 seeds, with lower
+       forgetting in 5 of 5. Descriptive only (five seeds, one data split).
+   * - Untuned reference experiment
+     - 0.6751 ± 0.0038, forgetting 0.0734, as recorded earlier; wall time per run about 1 s
+       (about 23 s before lean mode), features about 0.5 s.
+
+Both selected configurations sit on an edge of their grid (polynomial: learning rate 1, the
+largest value; ER-MLP: width 256, the largest). An exploratory extension on the validation
+split, calling ``tune()`` directly because the approved-grid gate refuses other grids, raised
+the best validation accuracy by 0.35 points (polynomial, learning rate 3) and 0.27 points
+(ER-MLP, width 512); the validation gap of about 1.8 points was unchanged. That extension is
+not an approved tuning record. A newer core that adds degree control (``diagonal_control``)
+leaves every default result bit-identical (all five reference seeds) and passes the suite
+(411 passed, 3 skipped with the degree-control adapter tests and the study-tool tests; on the
+pinned core the same suite gives 400 passed, 14 skipped, the 13 degree-control tests among them).
+
 What has not been run
 ---------------------
 
-* Validation tuning on real MNIST in ``official`` mode, for either algorithm (development
-  mode has been run, see above).
-* The intended comparison, ``configs/experiment_tuned_comparison.json``, in ``official``
-  mode. A development-mode run exists in ``results/tuned_comparison`` (10 completed, 0
-  failed, integrity passed); the benchmark reports it as not publishable.
-* Model selection on real tuning results.
+* The ``benchmark-results`` workflow on GitHub Actions. Its commands were run by hand (see
+  above), which does not produce the retained workflow artifacts.
+* Model selection under the non-default objectives on real tuning results.
 * Any reproduction on different hardware or a different BLAS.
 * The analysis and paper-asset tools in ``tools/`` (``analyze_per_degree_study.py``,
   ``run_comparison_study.py``, ``build_paper_assets.py``), and the mutation-check scripts.

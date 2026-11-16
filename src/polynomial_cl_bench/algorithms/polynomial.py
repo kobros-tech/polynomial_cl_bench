@@ -56,6 +56,11 @@ N_OUTPUTS = 10  # the core's single softmax head
 # ``run_condition`` with spies that forward to it, so this must not look at the patched name).
 _CORE_PARAMETERS = inspect.signature(run_condition).parameters
 CORE_HAS_LEAN_MODE = "diagnostics" in _CORE_PARAMETERS
+# Degree control (core PR "diagonal control"): per-degree factors in [0, 1] that multiply the
+# per-degree learning rates. Optional: a core without it still works for every configuration
+# that does not use a control.
+CORE_HAS_DEGREE_CONTROL = "degree_control_factors" in _CORE_PARAMETERS
+N_DEGREE_GROUPS = 4  # degrees 0-3; the core checks the same length
 CORE_REPORTS_TIMINGS = "timings" in _CORE_PARAMETERS
 
 ROLES = ("primary_reference", "experimental", "validation_candidate")
@@ -74,6 +79,7 @@ class PolynomialAdapter:
         role: str = "experimental",
         mode: str = "development",
         diagnostics: bool = False,
+        degree_control_factors=None,
     ):
         if condition not in CONDITIONS:
             raise AdapterError(
@@ -95,9 +101,24 @@ class PolynomialAdapter:
             or feature_power < 0
         ):
             raise AdapterError("feature_power must be a finite, non-negative scalar")
+        factors = self._check_degree_control(degree_control_factors)
+        if factors is not None and feature_power:
+            # The core refuses this combination too; refusing here names the configuration.
+            raise AdapterError(
+                "degree_control_factors cannot be combined with feature_power > 0"
+            )
+        if factors is not None and not CORE_HAS_DEGREE_CONTROL:
+            raise AdapterError(
+                "the installed core has no degree control (run_condition has no "
+                "degree_control_factors argument); install a core that provides it"
+            )
         self.condition = condition
         self.strategy = strategy
         self.learning_rate = learning_rate
+        # None means "no control". An all-ones control is the identity (the core treats it as no
+        # control and reproduces the uncontrolled run bit for bit), so it is stored as None and
+        # leaves run identity, records and fingerprints exactly as they were.
+        self.degree_control_factors = factors
         self.feature_power = feature_power
         self.hyperparameter_provenance = hyperparameter_provenance or {}
         self.role = role
@@ -111,6 +132,33 @@ class PolynomialAdapter:
         )
         self._feature_seconds = 0.0  # time spent constructing features in the last call
 
+    @staticmethod
+    def _check_degree_control(factors):
+        """Validated tuple of four floats in [0, 1], or None for no control / the identity."""
+        if factors is None:
+            return None
+        try:
+            flat = np.ravel(np.asarray(factors, dtype=object))
+        except ValueError as error:
+            raise AdapterError("degree_control_factors must be a flat list") from error
+        if flat.shape != (N_DEGREE_GROUPS,) or np.ndim(factors) != 1:
+            raise AdapterError(
+                f"degree_control_factors needs exactly {N_DEGREE_GROUPS} factors, one per "
+                "degree group"
+            )
+        if any(
+            isinstance(v, (bool, np.bool_))
+            or not isinstance(v, (int, float, np.number))
+            for v in flat
+        ):
+            raise AdapterError("degree_control_factors must be real numbers")
+        values = [float(v) for v in flat]
+        if not all(np.isfinite(v) and 0.0 <= v <= 1.0 for v in values):
+            raise AdapterError(
+                "degree_control_factors must be finite and within [0, 1]"
+            )
+        return None if all(v == 1.0 for v in values) else tuple(values)
+
     @classmethod
     def from_dict(cls, raw: dict, mode: str = "development") -> PolynomialAdapter:
         if raw.get("algorithm") != "polynomial_cl":
@@ -123,6 +171,7 @@ class PolynomialAdapter:
             hyperparameter_provenance=raw.get("hyperparameter_provenance"),
             role=raw.get("role", "experimental"),
             mode=mode,
+            degree_control_factors=raw.get("degree_control_factors"),
         )
 
     @classmethod
@@ -135,16 +184,19 @@ class PolynomialAdapter:
             if np.ndim(self.learning_rate)
             else float(self.learning_rate)
         )
+        configuration = {
+            "learning_rate": learning_rate,
+            "feature_power": float(self.feature_power),
+        }
+        if self.degree_control_factors is not None:  # absent, not null, when unused
+            configuration["degree_control_factors"] = list(self.degree_control_factors)
         return {
             "name": self.name,
             "role": self.role,
             "run_mode": self.mode,
             "condition": self.condition,
             "strategy": self.strategy,
-            "configuration": {
-                "learning_rate": learning_rate,
-                "feature_power": float(self.feature_power),
-            },
+            "configuration": configuration,
             "hyperparameter_provenance": self.hyperparameter_provenance,
             "core": core_provenance(),
             "benchmark": benchmark_provenance(),
@@ -190,6 +242,8 @@ class PolynomialAdapter:
             core_options["diagnostics"] = self.diagnostics
         if CORE_REPORTS_TIMINGS:
             core_options["timings"] = timings
+        if self.degree_control_factors is not None:
+            core_options["degree_control_factors"] = list(self.degree_control_factors)
         started = time.perf_counter()
         record = run_condition(
             self.condition,
@@ -224,11 +278,35 @@ class PolynomialAdapter:
                 f"{protocol.sampling!r}"
             )
         expected_rate = self.describe()["configuration"]["learning_rate"]
-        if record["learning_rate"] != expected_rate:
+        # With a control the core always runs in per-degree mode and reports one rate per
+        # degree, even for a scalar configured rate.
+        rate_to_match = expected_rate
+        if self.degree_control_factors is not None and not isinstance(
+            expected_rate, list
+        ):
+            rate_to_match = [expected_rate] * N_DEGREE_GROUPS
+        if record["learning_rate"] != rate_to_match:
             raise AdapterError(
                 f"core ran with learning_rate {record['learning_rate']!r}, "
-                f"configured {expected_rate!r}"
+                f"configured {rate_to_match!r}"
             )
+        if self.degree_control_factors is not None:
+            if record.get("degree_control_factors") != list(
+                self.degree_control_factors
+            ):
+                raise AdapterError(
+                    f"core ran with degree control {record.get('degree_control_factors')!r}, "
+                    f"configured {list(self.degree_control_factors)!r}"
+                )
+            effective = np.array(rate_to_match, dtype=float) * np.array(
+                self.degree_control_factors
+            )
+            if not np.allclose(
+                record["effective_degree_learning_rates"], effective, rtol=1e-12, atol=0
+            ):
+                raise AdapterError(
+                    "core's effective degree rates differ from the control"
+                )
         if (record["condition"], record["strategy"]) != (self.condition, self.strategy):
             raise AdapterError(
                 "core ran a different condition or strategy than configured"
@@ -287,6 +365,11 @@ class PolynomialAdapter:
                 "strategy": self.strategy,
                 "learning_rate": expected_rate,
                 "feature_power": float(self.feature_power),
+                **(
+                    {"degree_control_factors": list(self.degree_control_factors)}
+                    if self.degree_control_factors is not None
+                    else {}
+                ),
                 "epochs": protocol.epochs,
                 "batch_size": protocol.batch_size,
                 "sampling": record["sampling"],

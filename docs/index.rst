@@ -44,6 +44,7 @@ Contents
    experiments
    reproducibility
    analysis_and_paper
+   research_questions
 
 .. toctree::
    :maxdepth: 2

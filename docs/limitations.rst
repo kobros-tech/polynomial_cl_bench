@@ -13,17 +13,20 @@ Not implemented
 * Per-class accuracy (always ``null``).
 * A plugin mechanism for algorithms (see :doc:`algorithms`).
 
-Implemented but not yet run on real data
-----------------------------------------
+Run on real data, but not yet in CI
+-----------------------------------
 
-* Official-mode validation tuning, for either algorithm. Development-mode tuning has been run
-  on real MNIST for both (30 of 30 runs each) and the tuned comparison has been run from it
-  (10 of 10 runs), but those records carry no core or benchmark commit, are not
-  official-eligible, and the comparison is reported as not publishable. Neither has been
-  repeated under the pinned core in ``official`` mode.
+* Official-mode validation tuning, the tuned comparison and its reproducibility re-runs have
+  been run on real MNIST under the pinned core ``2e806d7`` at benchmark commit ``b8ae54f``
+  (see :doc:`status`), by running the ``benchmark-results`` commands by hand in a
+  single-CPU sandbox. The ``benchmark-results`` workflow itself has not been executed, so no
+  workflow artifact exists yet, and the numbers have not been reproduced on the CI runner or
+  with a different BLAS.
 * Model selection under the four objectives on those tuning results (only the default
   rule's ``selected_config`` has been used).
-* A reproduction on different hardware or with a different BLAS.
+* The degree-control and research-question studies (:doc:`research_questions`) are
+  exploratory, development-mode runs against a core that is not the pinned commit (degree
+  control) or with the approved grid but outside any experiment specification (RQ2-RQ4).
 
 Known limits of the design
 --------------------------
